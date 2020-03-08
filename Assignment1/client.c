@@ -162,6 +162,7 @@ void CRC(int Gen_poly[], char data[], char transmitted_data[])
     transmitted_data[data_bits_length+1]='\0';
 }
 
+// Inverts random bits based on BER 
 void BER(float ber,char transmitted_data[])
 {
     int transmitted_data_length = strlen(transmitted_data);
@@ -194,7 +195,6 @@ void BER(float ber,char transmitted_data[])
     
     for(int i=0;i<total_error;i++)
     {
-        // printf("%d\n", error_indices[i]);
         if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
         else transmitted_data[error_indices[i]]='0';
     }
@@ -202,7 +202,7 @@ void BER(float ber,char transmitted_data[])
 
 }
 
-// if 
+// if received data is completely divisible by generator function then no error was inserted and function returns true 
 int isErrorFree(int Gen_poly[], char received_data[])
 {
     printf("Received data %s\n", received_data);
@@ -350,12 +350,13 @@ int main(int argc, char  *argv[])
         // Removing previous data 
         memset(data, 0, 2000);
         fgets(data, 1000, stdin);
+        int size = strlen(data);
         if(seq==0)
         {
-            data[strlen(data)-1]='0';
+            data[size]='0';
         }
-        else data[strlen(data)-1]='1';
-        data[strlen(data)-1]='\0';
+        else data[size]='1';
+        data[size+1]='\0';
 
         CRC(Gen_poly, data, transmitted_data);
         printf("CRC based transmitted data: %s\n", transmitted_data);
@@ -412,11 +413,11 @@ int main(int argc, char  *argv[])
             {
                 // Received data in char[] array send it to isErrorFree function to check if the received function has somw error
                 int val = isErrorFree(Gen_poly,received_data); 
-                // The last bit in received data is flag and second last is sequence number 
+                // The first bit in received data is flag and second is sequence number 
                 // ACK/NAK flag
-                int flag = received_data[strlen(received_data)-1]-'0';
+                int flag = received_data[0]-'0';
                 // Received ACK/NAK flag for this sequence number
-                int recv_seq = received_data[strlen(received_data)-2]-'0';   
+                int recv_seq = received_data[1]-'0';   
                 
                 // Case 1       
                 if(!val)
