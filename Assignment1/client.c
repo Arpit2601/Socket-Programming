@@ -86,8 +86,26 @@ bool isNumber(char *str)
     return true;
 }
 
-void CRC(int Gen_poly[], int data_bits[], char transmitted_data[], int data_bits_length)
+void CRC(int Gen_poly[], char data[], char transmitted_data[])
 {    
+
+    int data_length = strlen(data);
+    
+    // data_bits after appending data with 8 zeros
+    int data_bits[data_length + 8];
+
+    for(int i=0;i<data_length;i++)
+    {
+        data_bits[i]=data[i]-'0';
+    }
+    
+    for(int i=0;i<8;i++)
+    {
+        data_bits[data_length+i]=0;
+    }
+
+    int data_bits_length = sizeof(data_bits)/sizeof(data_bits[0]);
+
     // temp stores current dividend being evaluated
     int temp[9];
     for(int i=0;i<9;i++)
@@ -144,8 +162,9 @@ void CRC(int Gen_poly[], int data_bits[], char transmitted_data[], int data_bits
     transmitted_data[data_bits_length+1]='\0';
 }
 
-void BER(float ber,char transmitted_data[],int transmitted_data_length)
+void BER(float ber,char transmitted_data[])
 {
+    int transmitted_data_length = strlen(transmitted_data);
     // number of bits you want error in 
     int total_error = floor(ber*transmitted_data_length);
     printf("Bits to be reversed: %d\n",total_error);
@@ -169,16 +188,80 @@ void BER(float ber,char transmitted_data[],int transmitted_data_length)
             }
         } while (uniqueflag != 1);
         error_indices[i] = random;
+        // printf("Index %d\n", random);
     }
+
+    
     for(int i=0;i<total_error;i++)
     {
-        if(transmitted_data[error_indices[i]]=='0'){transmitted_data[i]='1';}
+        // printf("%d\n", error_indices[i]);
+        if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
         else transmitted_data[error_indices[i]]='0';
     }
 
 
 }
 
+// if 
+int isErrorFree(int Gen_poly[], char received_data[])
+{
+    printf("Received data %s\n", received_data);
+    int received_data_length = strlen(received_data);
+    int received_data_bits[received_data_length];
+
+    for(int i=0;i<received_data_length;i++)
+    {
+        received_data_bits[i]=received_data[i]-'0';
+    }
+    // temp stores current dividend being evaluated
+    int temp[9];
+    for(int i=0;i<9;i++)
+    {
+        temp[i]=received_data_bits[i];
+    }
+
+    // remainder stores the remainder after completion of division
+    int remainder[8];
+
+    // temp_Gen_poly stores the temporary divisor on current dividend is being divided
+    // the result after temporary division is stored back in temp as next dividend
+    int temp_Gen_poly[9];
+    for(int i=9;i<=received_data_length;i++)
+    {
+        if(temp[0]==0)
+        {
+            for(int j=0;j<9;j++){temp_Gen_poly[j]=0;}
+        }
+        else 
+        {
+            for(int j=0;j<9;j++){temp_Gen_poly[j]=Gen_poly[j];}
+        }
+        
+        for(int k=1;k<9;k++)
+        {
+            if(temp[k]==temp_Gen_poly[k]){temp[k-1]=0;}
+            else temp[k-1]=1;
+        }
+        if(i!=received_data_length){temp[8]=received_data_bits[i];}
+        else 
+        {
+            for(int l=0;l<8;l++)
+            {
+                remainder[l]=temp[l];
+            }
+        }
+    }
+
+    for(int i=0;i<8;i++)
+    {
+        if(remainder[i])
+        {
+            return 0;
+        }
+
+    }
+    return 1;
+}
 
 int main(int argc, char  *argv[])
 {
@@ -233,57 +316,143 @@ int main(int argc, char  *argv[])
         return -1;
     }
 
-    // Establish connection with the server
-    // if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
-    // {
-    //     printf("Connection failed\n");
-    //     return -1;
-    // } 
+    //Establish connection with the server
+    if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        printf("Connection failed\n");
+        return -1;
+    } 
 
-    printf("Enter the data to be transmitted\n");
-
-    // data taken in 0s and 1s as string with max length=2000
-    // data appended and coneverted to int array as data_bits
-    // data to be transmitted as transmitted_data as string
+    // Max data bits you can send is 2000 bits
     char data[2000];
-    fgets(data, 1000, stdin);
-    data[strlen(data)-1]='\0';
 
     // Generator polynomial is x**8+x**2+x+1;
     int Gen_poly[9] = {1,0,0,0,0,0,1,1,1};
-    
-    int data_length = strlen(data);
-    
-    // data_bits after appending data with 8 zeros
-    int data_bits[data_length + 8];
 
-    for(int i=0;i<data_length;i++)
-    {
-        data_bits[i]=data[i]-'0';
-    }
-    
-    for(int i=0;i<8;i++)
-    {
-        data_bits[data_length+i]=0;
-    }
+    // transmitted data as string with max size 2009 as last 1 bit is used for sequence number
+    char transmitted_data[2009];
 
-    // transmitted data as string with max size 2008
-    char transmitted_data[2008];
-    int data_bits_length = sizeof(data_bits)/sizeof(data_bits[0]);
-    CRC(Gen_poly, data_bits, transmitted_data, data_bits_length);
-    printf("CRC based transmitted data: %s\n", transmitted_data);
+    // Received data
+    char received_data[2010];
 
-    printf("Enter BER\n");
+    // Bit error rate
     float ber;
-    scanf("%f", &ber);
-    if(ber<0 || ber>1)
+    // Sequence number
+    int seq = 0;
+    // time to wait before retransmitting i.e. wait for 5 seconds
+    int timeout = 5;
+    while (1)
     {
-        printf("Enter correct BER\n");
-        return -1;
-    }
-    int transmitted_data_length = data_bits_length;
-    // printf("%d\n",transmitted_data_length);
-    BER(ber, transmitted_data, transmitted_data_length);
+        // Take data as input then add sequence number at its end
+        // Then encrpyt it using CRC then add errors using BER which is taken input
+        // start the clock after the sending the data
+        printf("Enter the data to be transmitted:\n");
+        // Removing previous data 
+        memset(data, 0, 2000);
+        fgets(data, 1000, stdin);
+        if(seq==0)
+        {
+            data[strlen(data)-1]='0';
+        }
+        else data[strlen(data)-1]='1';
+        data[strlen(data)-1]='\0';
 
-    printf("Data to be transmitted after BER: %s\n", transmitted_data);
+        CRC(Gen_poly, data, transmitted_data);
+        printf("CRC based transmitted data: %s\n", transmitted_data);
+        printf("Enter BER:\n");
+        scanf("%f", &ber);
+        if(ber<0 || ber>1)
+        {
+            printf("Enter correct BER\n");
+            return -1;
+        }
+        
+        BER(ber, transmitted_data);
+        printf("Data to be transmitted after BER: %s\n", transmitted_data);
+
+        // the attributes are:socket descriptor, buffer containing data, message length, flag
+        send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+        clock_t start = clock();
+        // Message sent now wait to receive message from server
+        while (1)
+        {
+            // Server can send a maximum of 2010 bits data
+            // 2000 bits of data 
+            // 1 bit for sequence number
+            // 1 bit for ACK/NAK
+            // rest 8 bits for CRC
+
+            int val = read(sockfd, received_data, 2010);
+            if(!val)
+            {
+                printf("Server has closed the connection\n");
+                return -1;
+            }
+
+            // If timeout occurs before server has data then retransmit
+            if((clock()-start)/CLOCKS_PER_SEC>=timeout)
+            {
+                send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                start = clock();
+                printf("Timeout Occurred\n");
+                continue;
+            }
+            // If server sends no data then do something
+            // ElseIf server has sent the data then 3 cases can occur
+            // 1. Received data is not error free then retransmit
+            // 2. Received data is error free but NAK then retransmit
+            // 3. Received data error free and ACK but for wrong sequence number then retransmit
+            // 4. Received data error free and ACK and for right sequence number then take input and send next data with new sequence number
+
+            if(strlen(received_data)==0)
+            {
+
+            }
+            else
+            {
+                // Received data in char[] array send it to isErrorFree function to check if the received function has somw error
+                int val = isErrorFree(Gen_poly,received_data); 
+                // The last bit in received data is flag and second last is sequence number 
+                // ACK/NAK flag
+                int flag = received_data[strlen(received_data)-1]-'0';
+                // Received ACK/NAK flag for this sequence number
+                int recv_seq = received_data[strlen(received_data)-2]-'0';   
+                
+                // Case 1       
+                if(!val)
+                {
+                    send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                    printf("Error in received data.\nRetrnasmitting...\n");
+                    start = clock();
+                }
+                // Case 2
+                else if(val && !flag)
+                {
+                    send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                    printf("received NAK.\nRetrnasmitting...\n");
+                    start = clock();
+                }
+                // Case 3
+                else if(val && flag && seq!=recv_seq)
+                {
+                    send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                    printf("Received ACK for wrong sequence number.\nRetrnasmitting...\n");
+                    start = clock();
+                }
+                // Case 4
+                else
+                {
+                    printf("Message received correctly by server");
+                    seq = 1-seq;
+                    break;
+                }
+                
+            }
+            
+        }
+        
+    }
+    // shuts doen the socket and frees resources allocated to that socket.
+    close(sockfd);
+    
 }
