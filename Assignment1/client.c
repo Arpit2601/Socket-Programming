@@ -167,37 +167,51 @@ void BER(float ber,char transmitted_data[])
 {
     int transmitted_data_length = strlen(transmitted_data);
     // number of bits you want error in 
-    int total_error = floor(ber*transmitted_data_length);
-    printf("Bits to be reversed: %d\n",total_error);
+    // int total_error = floor(ber*transmitted_data_length);
+    // printf("Bits to be reversed: %d\n",total_error);
 
-    int uniqueflag;
-    int error_indices[total_error];
-    int random;
-    for(int i = 0; i < total_error; i++) 
-    {
-        do {
-            /* Assume things are unique... we'll reset this flag if not. */
-            uniqueflag = 1;
-            random = rand() % transmitted_data_length+ 1;
-            /* This loop checks for uniqueness */
-            for (int j = 0; j < i && uniqueflag == 1; j++) 
-            {
-                if (error_indices[j] == random) 
-                {
-                    uniqueflag = 0;
-                }
-            }
-        } while (uniqueflag != 1);
-        error_indices[i] = random;
-        // printf("Index %d\n", random);
-    }
+    // int uniqueflag;
+    // int error_indices[total_error];
+    // int random;
+    // for(int i = 0; i < total_error; i++) 
+    // {
+    //     do {
+    //         /* Assume things are unique... we'll reset this flag if not. */
+    //         uniqueflag = 1;
+    //         random = rand() % transmitted_data_length+ 1;
+    //         /* This loop checks for uniqueness */
+    //         for (int j = 0; j < i && uniqueflag == 1; j++) 
+    //         {
+    //             if (error_indices[j] == random) 
+    //             {
+    //                 uniqueflag = 0;
+    //             }
+    //         }
+    //     } while (uniqueflag != 1);
+    //     error_indices[i] = random;
+    //     // printf("Index %d\n", random);
+    // }
+    double temp;
 
-    
-    for(int i=0;i<total_error;i++)
+    for(int i=0;i<transmitted_data_length;i++)
     {
-        if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
-        else transmitted_data[error_indices[i]]='0';
+        temp = (double)rand() / (double)RAND_MAX ;
+        if(temp>=(double)ber)
+        {
+
+        }
+        else
+        {
+            if(transmitted_data[i]=='0'){transmitted_data[i]='1';}
+            else transmitted_data[i]='0';
+        }
+        
     }
+    // for(int i=0;i<total_error;i++)
+    // {
+    //     if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
+    //     else transmitted_data[error_indices[i]]='0';
+    // }
 
 
 }
@@ -265,7 +279,7 @@ int isErrorFree(int Gen_poly[], char received_data[])
 
 int main(int argc, char  *argv[])
 {
-    
+    srand(time(0));
     if(argc!=3)
     {
         printf("Input not in specified format\n");
@@ -341,6 +355,8 @@ int main(int argc, char  *argv[])
     int seq = 0;
     // time to wait before retransmitting i.e. wait for 5 seconds
     int timeout = 5;
+    // Data after CRC
+    // char after_CRC[2010];
     while (1)
     {
         // Take data as input then add sequence number at its end
@@ -360,6 +376,7 @@ int main(int argc, char  *argv[])
         data[size]='\0';
         // printf("%s\n", data);
         CRC(Gen_poly, data, transmitted_data);
+        // strcpy(after_CRC, transmitted_data);
         printf("CRC based transmitted data: %s\n", transmitted_data);
         printf("Enter BER:\n");
         scanf("%f", &ber);
@@ -396,6 +413,7 @@ int main(int argc, char  *argv[])
             // If timeout occurs before server has data then retransmit
             if((clock()-start)/CLOCKS_PER_SEC>=timeout)
             {
+                
                 send(sockfd, transmitted_data, strlen(transmitted_data), 0);
                 start = clock();
                 printf("Timeout Occurred\n");
@@ -425,6 +443,8 @@ int main(int argc, char  *argv[])
                 // Case 1       
                 if(!val)
                 {
+                    CRC(Gen_poly, data, transmitted_data);
+                    BER(ber, transmitted_data);
                     send(sockfd, transmitted_data, strlen(transmitted_data), 0);
                     printf("Error in received data.\nRetrnasmitting...\n");
                     start = clock();
@@ -432,6 +452,8 @@ int main(int argc, char  *argv[])
                 // Case 2
                 else if(val && !flag)
                 {
+                    CRC(Gen_poly, data, transmitted_data);
+                    BER(ber, transmitted_data);
                     send(sockfd, transmitted_data, strlen(transmitted_data), 0);
                     printf("received NAK.\nRetrnasmitting...\n");
                     start = clock();
@@ -439,6 +461,8 @@ int main(int argc, char  *argv[])
                 // Case 3
                 else if(val && flag && seq!=recv_seq)
                 {
+                    CRC(Gen_poly, data, transmitted_data);
+                    BER(ber, transmitted_data);
                     send(sockfd, transmitted_data, strlen(transmitted_data), 0);
                     printf("Received ACK for wrong sequence number.\nRetrnasmitting...\n");
                     start = clock();
