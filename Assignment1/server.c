@@ -16,7 +16,7 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#define MAX_CONNECTIONS 100
+#define MAX_CONNECTIONS 2
 #define BUFFER_SIZE 2010
 #define BIT_ERROR_RATE 0.00
 
@@ -293,7 +293,7 @@ void * threadfunc(void * arg){
             }
             else{
 
-                int recieved_sqn_no = data_recieved[strlen(data_recieved)-2];
+                int recieved_sqn_no = data_recieved[strlen(data_recieved)-9]-'0';
 
                 int check = isErrorFree(Gen_poly, data_recieved);
 
@@ -304,7 +304,9 @@ void * threadfunc(void * arg){
                 char str[INET_ADDRSTRLEN];
                 getpeername(fd_accepted_socket, (struct sockaddr *)&sock, (socklen_t *)&len);
                 inet_ntop(AF_INET, &(sock.sin_addr), str, INET_ADDRSTRLEN);
-                printf("Message Recieved from %s and port number %d is : %s\n", str, ntohs(sock.sin_port), data_recieved);
+                // printf("Message Recieved from %s and port number %d is : %s\n", str, ntohs(sock.sin_port), data_recieved);
+                // printf("Recieved Sqno: %d", recieved_sqn_no);
+
                 if (check == 1){
                     // error free
                     if (recieved_sqn_no == sqno){
@@ -455,7 +457,7 @@ int main(int argc, char* argv[])
     }
 
 
-pthread_t threadids[MAX_CONNECTIONS+10] = {[0 ... MAX_CONNECTIONS +9] = pthread_self()};
+pthread_t threadids[MAX_CONNECTIONS] = {[0 ... MAX_CONNECTIONS -1] = pthread_self()};
 int j = 0;
 
 
@@ -464,42 +466,52 @@ int j = 0;
 
         len_accepted_socket = sizeof(accepted_socket);
 
-        fd_accepted_socket = accept(fd_listening_socket, (struct sockaddr *)&accepted_socket, &len_accepted_socket);
-
-
-        if(fd_accepted_socket < 0){
-            continue;
-        }
-
-
         int k = 0;
         while(k < MAX_CONNECTIONS && allsockets[k] >= 0){
             k++;
         }
 
-        if (k == MAX_CONNECTIONS){
-            // close the socket recently opened
-            printf("Maximum connection limit reached. Any new connection request will not be accepted \n");
-            close(fd_accepted_socket);
+
+        if (k ==  MAX_CONNECTIONS){
             continue;
+
         }
         else{
+
+            fd_accepted_socket = accept(fd_listening_socket, (struct sockaddr *)&accepted_socket, &len_accepted_socket);
+
+            if(fd_accepted_socket < 0){
+                perror("Error in connection");
+                continue;
+            }
+
             allsockets[k] = fd_accepted_socket;
+            print_connection_info((struct sockaddr_in *)&accepted_socket);
+            int l = 0;
+            while(l < MAX_CONNECTIONS && allsockets[l] >= 0){
+                l++;
+            }
+            if(l == MAX_CONNECTIONS){
+                printf("No More sockets will be accepted. We have reached the socket limit.\n");
+            }
+
+            fflush(stdout);
 
         }
 
 
-        print_connection_info((struct sockaddr_in *)&accepted_socket);
 
 
-        if (pthread_create(&threadids[j], NULL, threadfunc, &fd_accepted_socket) == 0){
-
+        if ((pthread_create(&threadids[j], NULL, threadfunc, &fd_accepted_socket)) == 0){
+            // printf("Thread created %ld\n", threadids[j]);
             // success
         }
         else{
 
             // failiure 
-            printf("Not able to create thread. Error");
+            printf("Not able to create thread. Error\n");
+            close(fd_accepted_socket);
+            continue;
         }
 
 
@@ -513,10 +525,12 @@ int j = 0;
             j %= MAX_CONNECTIONS;
 
         }
-
+        // printf("Dodo");
+        // fflush(stdout);
 
         if(threadids[j] != pthread_self()){
             pthread_join(threadids[j], NULL);
+            // printf("Thread joined %ld\n", threadids[j]);
             threadids[j] = pthread_self();
         }
 

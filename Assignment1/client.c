@@ -346,22 +346,25 @@ int main(int argc, char  *argv[])
         // Take data as input then add sequence number at its end
         // Then encrpyt it using CRC then add errors using BER which is taken input
         // start the clock after the sending the data
-        printf("Enter the data to be transmitted:\n");
+        printf("Enter the data to be transmitted: \n");
         // Removing previous data 
         memset(data, 0, 2000);
-        fgets(data, 1000, stdin);
+        fgets(data, 2000, stdin);
         int size = strlen(data);
+        // printf("%d\n",size);
         if(seq==0)
         {
-            data[size]='0';
+            data[size-1]='0';
         }
-        else data[size]='1';
-        data[size+1]='\0';
-
+        else data[size-1]='1';
+        data[size]='\0';
+        // printf("%s\n", data);
         CRC(Gen_poly, data, transmitted_data);
         printf("CRC based transmitted data: %s\n", transmitted_data);
         printf("Enter BER:\n");
         scanf("%f", &ber);
+        char new_line[100];
+        fgets(new_line, 100, stdin);
         if(ber<0 || ber>1)
         {
             printf("Enter correct BER\n");
@@ -443,7 +446,7 @@ int main(int argc, char  *argv[])
                 // Case 4
                 else
                 {
-                    printf("Message received correctly by server");
+                    printf("Message received correctly by server \n");
                     seq = 1-seq;
                     break;
                 }
