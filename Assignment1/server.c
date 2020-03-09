@@ -171,47 +171,59 @@ void CRC(int Gen_poly[], char data[], char transmitted_data[])
 
 
 
-
+// Inverts random bits based on BER 
 void BER(float ber,char transmitted_data[])
 {
     int transmitted_data_length = strlen(transmitted_data);
     // number of bits you want error in 
-    int total_error = floor(ber*transmitted_data_length);
-    printf("Bits to be reversed: %d\n",total_error);
+    // int total_error = floor(ber*transmitted_data_length);
+    // printf("Bits to be reversed: %d\n",total_error);
 
-    int uniqueflag;
-    int error_indices[total_error];
-    int random;
-    for(int i = 0; i < total_error; i++) 
-    {
-        do {
-            /* Assume things are unique... we'll reset this flag if not. */
-            uniqueflag = 1;
-            random = rand() % transmitted_data_length+ 1;
-            /* This loop checks for uniqueness */
-            for (int j = 0; j < i && uniqueflag == 1; j++) 
-            {
-                if (error_indices[j] == random) 
-                {
-                    uniqueflag = 0;
-                }
-            }
-        } while (uniqueflag != 1);
-        error_indices[i] = random;
-        // printf("Index %d\n", random);
-    }
+    // int uniqueflag;
+    // int error_indices[total_error];
+    // int random;
+    // for(int i = 0; i < total_error; i++) 
+    // {
+    //     do {
+    //         /* Assume things are unique... we'll reset this flag if not. */
+    //         uniqueflag = 1;
+    //         random = rand() % transmitted_data_length+ 1;
+    //         /* This loop checks for uniqueness */
+    //         for (int j = 0; j < i && uniqueflag == 1; j++) 
+    //         {
+    //             if (error_indices[j] == random) 
+    //             {
+    //                 uniqueflag = 0;
+    //             }
+    //         }
+    //     } while (uniqueflag != 1);
+    //     error_indices[i] = random;
+    //     // printf("Index %d\n", random);
+    // }
+    double temp;
 
-    
-    for(int i=0;i<total_error;i++)
+    for(int i=0;i<transmitted_data_length;i++)
     {
-        // printf("%d\n", error_indices[i]);
-        if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
-        else transmitted_data[error_indices[i]]='0';
+        temp = (double)rand() / (double)RAND_MAX ;
+        if(temp>=(double)ber)
+        {
+
+        }
+        else
+        {
+            if(transmitted_data[i]=='0'){transmitted_data[i]='1';}
+            else transmitted_data[i]='0';
+        }
+        
     }
+    // for(int i=0;i<total_error;i++)
+    // {
+    //     if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
+    //     else transmitted_data[error_indices[i]]='0';
+    // }
 
 
 }
-
 
 
 
