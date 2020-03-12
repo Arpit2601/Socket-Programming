@@ -295,6 +295,7 @@ void * threadfunc(void * arg){
     int sqno = 0;
     // int bytes_read;
     for(;;){
+        memset(data_recieved, 0, BUFFER_SIZE+10);
         if(read(fd_accepted_socket, data_recieved, BUFFER_SIZE) == 0){
             break;
 
@@ -359,9 +360,6 @@ void * threadfunc(void * arg){
 
 
     }
-
-
-
     // terminate the thread and connection
     // close socket
     print_close_socket(fd_accepted_socket);
@@ -375,24 +373,14 @@ void * threadfunc(void * arg){
 
     pthread_exit(NULL);
     // close the thread
-
 }
-
-
-
-
-
-
 
 int main(int argc, char* argv[])
 {
 
-
-
     for(int i = 0; i < MAX_CONNECTIONS; i++){
         allsockets[i] = -1;
     }
-
 
     if(argc!=2)
     {
@@ -402,7 +390,6 @@ int main(int argc, char* argv[])
 
     int server_port = atoi(argv[1]);
 
-
     signal(SIGINT, control_c_handler);
 
     int fd_listening_socket = 0;
@@ -411,14 +398,11 @@ int main(int argc, char* argv[])
     socklen_t len_accepted_socket;
     int fd_accepted_socket = 0;
 
-
-
     if(server_port<0 || server_port>65535 || !isNumber(argv[1]))
     {
         perror("Port number not correct\n");
         return -1;
     }
-
 
     // Creating socket file descriptor 
     if((fd_listening_socket = socket(AF_INET, SOCK_STREAM, 0))<=0)
@@ -429,8 +413,6 @@ int main(int argc, char* argv[])
 
     int opt=1;
     // Forcefully attaching socket to the port  
-    
-
 
     if (setsockopt(fd_listening_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
         perror("Unable to start the server socket with required options for server"); 
@@ -443,20 +425,12 @@ int main(int argc, char* argv[])
 
     memset((listening_socket.sin_zero), 0 , sizeof(listening_socket.sin_zero));
 
-
-
-
     // Binding socket to port specified as input
     if(bind(fd_listening_socket, (struct sockaddr *)&listening_socket, sizeof(listening_socket))<0)
     {
         perror("Binding failed\n");
         return -1;
     }
-
-
-
-
-
 
     if(listen(fd_listening_socket, MAX_CONNECTIONS) < 0)
     {
@@ -468,11 +442,8 @@ int main(int argc, char* argv[])
         printf("Listening!\n");
     }
 
-
-pthread_t threadids[MAX_CONNECTIONS] = {[0 ... MAX_CONNECTIONS -1] = pthread_self()};
-int j = 0;
-
-
+    pthread_t threadids[MAX_CONNECTIONS] = {[0 ... MAX_CONNECTIONS -1] = pthread_self()};
+    int j = 0;
 
     while(1){
 
@@ -511,9 +482,6 @@ int j = 0;
 
         }
 
-
-
-
         if ((pthread_create(&threadids[j], NULL, threadfunc, &fd_accepted_socket)) == 0){
             // printf("Thread created %ld\n", threadids[j]);
             // success
@@ -525,7 +493,6 @@ int j = 0;
             close(fd_accepted_socket);
             continue;
         }
-
 
         fflush(stdout);
 
@@ -545,17 +512,5 @@ int j = 0;
             // printf("Thread joined %ld\n", threadids[j]);
             threadids[j] = pthread_self();
         }
-
-
-
-
-
-
-
-
-
     }
-    
-
-    
 }

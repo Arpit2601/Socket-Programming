@@ -166,31 +166,7 @@ void CRC(int Gen_poly[], char data[], char transmitted_data[])
 void BER(float ber,char transmitted_data[])
 {
     int transmitted_data_length = strlen(transmitted_data);
-    // number of bits you want error in 
-    // int total_error = floor(ber*transmitted_data_length);
-    // printf("Bits to be reversed: %d\n",total_error);
 
-    // int uniqueflag;
-    // int error_indices[total_error];
-    // int random;
-    // for(int i = 0; i < total_error; i++) 
-    // {
-    //     do {
-    //         /* Assume things are unique... we'll reset this flag if not. */
-    //         uniqueflag = 1;
-    //         random = rand() % transmitted_data_length+ 1;
-    //         /* This loop checks for uniqueness */
-    //         for (int j = 0; j < i && uniqueflag == 1; j++) 
-    //         {
-    //             if (error_indices[j] == random) 
-    //             {
-    //                 uniqueflag = 0;
-    //             }
-    //         }
-    //     } while (uniqueflag != 1);
-    //     error_indices[i] = random;
-    //     // printf("Index %d\n", random);
-    // }
     double temp;
 
     for(int i=0;i<transmitted_data_length;i++)
@@ -207,13 +183,6 @@ void BER(float ber,char transmitted_data[])
         }
         
     }
-    // for(int i=0;i<total_error;i++)
-    // {
-    //     if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
-    //     else transmitted_data[error_indices[i]]='0';
-    // }
-
-
 }
 
 // if received data is completely divisible by generator function then no error was inserted and function returns true 
@@ -365,7 +334,8 @@ int main(int argc, char  *argv[])
         printf("Enter the data to be transmitted: \n");
         // Removing previous data 
         memset(data, 0, 2000);
-        fgets(data, 2000, stdin);
+        memset(transmitted_data, 0, 2000);
+        fgets(data, 2000-1, stdin);
         int size = strlen(data);
         // printf("%d\n",size);
         if(seq==0)
@@ -413,7 +383,8 @@ int main(int argc, char  *argv[])
             // If timeout occurs before server has data then retransmit
             if((clock()-start)/CLOCKS_PER_SEC>=timeout)
             {
-                
+                CRC(Gen_poly, data, transmitted_data);
+                BER(ber, transmitted_data);
                 send(sockfd, transmitted_data, strlen(transmitted_data), 0);
                 start = clock();
                 printf("Timeout Occurred\n");
