@@ -18,7 +18,7 @@
 
 #define MAX_CONNECTIONS 50
 #define BUFFER_SIZE 2010
-#define BIT_ERROR_RATE 0.00
+int BIT_ERROR_RATE;
 
 #define server_ip "0.0.0.0"
 
@@ -374,6 +374,7 @@ int main(int argc, char* argv[])
 
     signal(SIGINT, control_c_handler);
 
+
     int fd_listening_socket = 0;    // FD of the listening socket
     struct sockaddr_in listening_socket;
     struct sockaddr_storage accepted_socket;
@@ -426,7 +427,14 @@ int main(int argc, char* argv[])
         printf("Listening!\n");
     }
 
-
+    printf("Enter Bit Error rate for the server \n");
+    scanf("%f", &BIT_ERROR_RATE);
+    
+    if(BIT_ERROR_RATE<0 || BIT_ERROR_RATE>1)
+    {
+        printf("Enter correct BER\n");
+        return -1;
+    }
 
 
     pthread_t threadids[MAX_CONNECTIONS] = {[0 ... MAX_CONNECTIONS -1] = pthread_self()};
