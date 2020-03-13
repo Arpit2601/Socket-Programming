@@ -18,7 +18,7 @@
 
 #define MAX_CONNECTIONS 50
 #define BUFFER_SIZE 2010
-int BIT_ERROR_RATE;
+float BIT_ERROR_RATE;
 
 #define server_ip "0.0.0.0"
 
@@ -429,7 +429,7 @@ int main(int argc, char* argv[])
 
     printf("Enter Bit Error rate for the server \n");
     scanf("%f", &BIT_ERROR_RATE);
-    
+
     if(BIT_ERROR_RATE<0 || BIT_ERROR_RATE>1)
     {
         printf("Enter correct BER\n");
