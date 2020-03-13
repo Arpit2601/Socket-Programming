@@ -23,10 +23,10 @@
 #define server_ip "0.0.0.0"
 
 
-int allsockets[MAX_CONNECTIONS];  //
+int allsockets[MAX_CONNECTIONS]; /*  an array to maintain a list of all the sockets that are currently active and being used
+ The array is intialised with -1s*/
 
-
-bool isNumber(char *str)
+bool isNumber(char *str)  // checks if the given strign is a number
 {
     int i=0;
     if(str[0]=='-')
@@ -43,7 +43,7 @@ bool isNumber(char *str)
 
 
 
-void* print_close_socket(int f){
+void* print_close_socket(int f){ //prints the connection info of the client that is being disconnected
 
     struct sockaddr_in sock;
     socklen_t len = sizeof(struct sockaddr_in);
@@ -56,7 +56,7 @@ void* print_close_socket(int f){
 
 
 
-void* print_connection_info(struct sockaddr_in * accepted_socket){
+void* print_connection_info(struct sockaddr_in * accepted_socket){ // prints the connection info of the client that is just connected
     socklen_t len = sizeof(struct sockaddr_in);
     char str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &((*accepted_socket).sin_addr), str, INET_ADDRSTRLEN);
@@ -67,8 +67,8 @@ void* print_connection_info(struct sockaddr_in * accepted_socket){
 
 
 
-void control_c_handler(int sig){
-
+void control_c_handler(int sig){ // this is the function that handle Ctrl+C
+// If control c is pressed we have to gracefully close the connections 
     printf("Server Closing. Please Wait ........ \n");
 
     for(int i = 0; i < MAX_CONNECTIONS; i++){
@@ -89,6 +89,9 @@ void control_c_handler(int sig){
 
 }
 
+
+
+// takes the generator polynomial, and data as the input and outputs the data with appended crc checksum
 
 void CRC(int Gen_poly[], char data[], char transmitted_data[])
 {    
@@ -178,8 +181,8 @@ void BER(float ber,char transmitted_data[])
 
     for(int i=0;i<transmitted_data_length;i++)
     {
-        temp = (double)rand() / (double)RAND_MAX ;
-        if(temp>=(double)ber)
+        temp = (double)rand() / (double)RAND_MAX ;   // generates a random number between 0 and 1
+        if(temp>=(double)ber)           // if more than ber than do nothing else flip the bits
         {
 
         }
@@ -194,7 +197,7 @@ void BER(float ber,char transmitted_data[])
 }
 
 
-
+// checks if the recieved_data is error free. similar to crc function
 int isErrorFree(int Gen_poly[], char received_data[])
 {
     // printf("Received data %s\n", received_data);
@@ -257,29 +260,30 @@ int isErrorFree(int Gen_poly[], char received_data[])
 
 
 void * threadfunc(void * arg){
+    /* This is the function that is run whenever a thread is created. Its argument is FD of the accepted socket */
     int fd_accepted_socket = *((int *) arg);
     int Gen_poly[9] = {1,0,0,0,0,0,1,1,1};
-    char data_recieved[BUFFER_SIZE+10];
+    char data_recieved[BUFFER_SIZE+10]; // will hold the data recieved
     int sqno = 0;
     // int bytes_read;
     for(;;){
-        memset(data_recieved, 0, BUFFER_SIZE+10);
-        if(read(fd_accepted_socket, data_recieved, BUFFER_SIZE) == 0){
-            break;
-
+        memset(data_recieved, 0, BUFFER_SIZE+10);  // flushed with null characters
+        if(read(fd_accepted_socket, data_recieved, BUFFER_SIZE) == 0){   // if reading 0 bytes than break and close the connection
+            break;                                                     // when the connection is terminated by the client than read func returns 0
+                                                                        // if the socket has no new data recieved but the connection is stll there than the program will be in a waiting state at the read call 
         }
-        else{
+        else{                                                          
             if(strlen(data_recieved) == 0){
 
             }
-            else{
+            else{                                                        // if some data recieved 
 
-                int recieved_sqn_no = data_recieved[strlen(data_recieved)-9]-'0';
+                int recieved_sqn_no = data_recieved[strlen(data_recieved)-9]-'0';    //get the sequence number of the recieved data 
 
                 printf("%s \n", data_recieved);
 
 
-                int check = isErrorFree(Gen_poly, data_recieved);
+                int check = isErrorFree(Gen_poly, data_recieved);    // if data is corrupted or not 
 
                 char sent_data[100];
                 sent_data[2] = '\0';
@@ -292,26 +296,27 @@ void * threadfunc(void * arg){
                 printf("Value recieved at the server from ip address %s and port number %d : \n", str, ntohs(sock.sin_port));
                 printf("%s \n", data_recieved);
 
-                if (check == 1){
+                if (check == 1){                // if data is correct
                     // error free
-                    if (recieved_sqn_no == sqno){
+                    if (recieved_sqn_no == sqno){  // recieved correct sequence number 
                     //    send ACK
+                        printf("The recieved values are correct Sending ACK \n");
                         sent_data[0] = '1';
-                        sent_data[1] = sqno + '0';
+                        sent_data[1] = sqno + '0';  // send ack sqn no
                         sqno = 1-sqno;
                     }
-                    else{
-                        // send NACK
-                        sent_data[0] = '0';
+                    else{                     // wrong sequence number    
+
+                        printf("The recieved value has wrong sequence number Sending NACK \n");          
+                        sent_data[0] = '0';      // send NACK sqn no
                         sent_data[1] = sqno + '0';
                     }
 
                 }
-                else{
-                    // error is there
-                    // send NACK
+                else{ // data incorrect
+                    // CRC check failed send NACK
 
-                    printf("The recieved value has error \n");
+                    printf("The recieved value has error Sending NACK \n");
                     sent_data[0] = '0';
                     sent_data[1] = sqno + '0';
 
@@ -345,6 +350,10 @@ void * threadfunc(void * arg){
     // close the thread
 }
 
+
+
+// main function
+
 int main(int argc, char* argv[])
 {
 
@@ -358,15 +367,15 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    int server_port = atoi(argv[1]);
+    int server_port = atoi(argv[1]);   // port number on whcih to run server
 
     signal(SIGINT, control_c_handler);
 
-    int fd_listening_socket = 0;
+    int fd_listening_socket = 0;    // FD of the listening socket
     struct sockaddr_in listening_socket;
     struct sockaddr_storage accepted_socket;
     socklen_t len_accepted_socket;
-    int fd_accepted_socket = 0;
+    int fd_accepted_socket = 0;   // FD of the accepted socket
 
     if(server_port<0 || server_port>65535 || !isNumber(argv[1]))
     {
@@ -403,6 +412,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+// setting listening socket to listen to incoming connections
     if(listen(fd_listening_socket, MAX_CONNECTIONS) < 0)
     {
         perror("Listening error\n");
@@ -414,6 +424,8 @@ int main(int argc, char* argv[])
     }
 
 
+
+
     pthread_t threadids[MAX_CONNECTIONS] = {[0 ... MAX_CONNECTIONS -1] = pthread_self()};
     int j = 0;
 
@@ -423,17 +435,17 @@ int main(int argc, char* argv[])
 
         len_accepted_socket = sizeof(accepted_socket);
 
-        int k = 0;
+        int k = 0;    // find a entry in allsockets that is unused
         while(k < MAX_CONNECTIONS && allsockets[k] >= 0){
             k++;
         }
 
-
+        // If not found than continue
         if (k ==  MAX_CONNECTIONS){
             continue;
 
         }
-        else{
+        else{   // if found than accept connection
 
             fd_accepted_socket = accept(fd_listening_socket, (struct sockaddr *)&accepted_socket, &len_accepted_socket);
 
@@ -442,13 +454,13 @@ int main(int argc, char* argv[])
                 continue;
             }
 
-            allsockets[k] = fd_accepted_socket;
+            allsockets[k] = fd_accepted_socket;  // register the value in allsockets
             print_connection_info((struct sockaddr_in *)&accepted_socket);
             int l = 0;
             while(l < MAX_CONNECTIONS && allsockets[l] >= 0){
                 l++;
             }
-            if(l == MAX_CONNECTIONS){
+            if(l == MAX_CONNECTIONS){   // if after accepting allsockets is full than print warning message
                 printf("No More sockets will be accepted. We have reached the socket limit.\n");
             }
 
@@ -456,7 +468,7 @@ int main(int argc, char* argv[])
 
         }
 
-        if ((pthread_create(&threadids[j], NULL, threadfunc, &fd_accepted_socket)) == 0){
+        if ((pthread_create(&threadids[j], NULL, threadfunc, &fd_accepted_socket)) == 0){   // create a thread for the socket
 
 
         }
@@ -465,16 +477,21 @@ int main(int argc, char* argv[])
             // failiure 
             printf("Not able to create thread. Error\n");
             close(fd_accepted_socket);
+            for(int i = 0; i < MAX_CONNECTIONS; i++){
+                if (allsockets[i] == fd_accepted_socket){
+                    allsockets[i] = -1;
+                }
+            }
             continue;
         }
 
-        fflush(stdout);
+        fflush(stdout); 
 
         j++;
         j %= MAX_CONNECTIONS;
-
-        while (pthread_kill(threadids[j], 0) == 0 && threadids[j] != pthread_self()){
-            j++;
+  
+        while (pthread_kill(threadids[j], 0) == 0 && threadids[j] != pthread_self()){  // find a unused entry in threadids for the next socket
+            j++;                                                                       // pthread_kill(id, 0) tells if a thread is currently running or not 
             j %= MAX_CONNECTIONS;
 
         }
