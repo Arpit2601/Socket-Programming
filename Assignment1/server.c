@@ -280,9 +280,6 @@ void * threadfunc(void * arg){
 
                 int recieved_sqn_no = data_recieved[strlen(data_recieved)-9]-'0';    //get the sequence number of the recieved data 
 
-                printf("%s \n", data_recieved);
-
-
                 int check = isErrorFree(Gen_poly, data_recieved);    // if data is corrupted or not 
 
                 char sent_data[100];
@@ -328,6 +325,7 @@ void * threadfunc(void * arg){
 
                 char sent_data2[BUFFER_SIZE];
                 memset(sent_data2, 0, BUFFER_SIZE);
+
                 CRC(Gen_poly, sent_data, sent_data2);
                 printf("Transmitted data after CRC %s \n", sent_data2);
                 BER(BIT_ERROR_RATE, sent_data2);
