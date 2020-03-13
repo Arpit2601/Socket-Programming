@@ -23,7 +23,7 @@
 #define server_ip "0.0.0.0"
 
 
-int allsockets[MAX_CONNECTIONS];
+int allsockets[MAX_CONNECTIONS];  //
 
 
 bool isNumber(char *str)
@@ -69,7 +69,7 @@ void* print_connection_info(struct sockaddr_in * accepted_socket){
 
 void control_c_handler(int sig){
 
-    printf("Server Closing. Please Wait \n");
+    printf("Server Closing. Please Wait ........ \n");
 
     for(int i = 0; i < MAX_CONNECTIONS; i++){
         if(allsockets[i] != -1){
@@ -88,8 +88,6 @@ void control_c_handler(int sig){
 
 
 }
-
-
 
 
 void CRC(int Gen_poly[], char data[], char transmitted_data[])
@@ -175,31 +173,7 @@ void CRC(int Gen_poly[], char data[], char transmitted_data[])
 void BER(float ber,char transmitted_data[])
 {
     int transmitted_data_length = strlen(transmitted_data);
-    // number of bits you want error in 
-    // int total_error = floor(ber*transmitted_data_length);
-    // printf("Bits to be reversed: %d\n",total_error);
 
-    // int uniqueflag;
-    // int error_indices[total_error];
-    // int random;
-    // for(int i = 0; i < total_error; i++) 
-    // {
-    //     do {
-    //         /* Assume things are unique... we'll reset this flag if not. */
-    //         uniqueflag = 1;
-    //         random = rand() % transmitted_data_length+ 1;
-    //         /* This loop checks for uniqueness */
-    //         for (int j = 0; j < i && uniqueflag == 1; j++) 
-    //         {
-    //             if (error_indices[j] == random) 
-    //             {
-    //                 uniqueflag = 0;
-    //             }
-    //         }
-    //     } while (uniqueflag != 1);
-    //     error_indices[i] = random;
-    //     // printf("Index %d\n", random);
-    // }
     double temp;
 
     for(int i=0;i<transmitted_data_length;i++)
@@ -216,12 +190,6 @@ void BER(float ber,char transmitted_data[])
         }
         
     }
-    // for(int i=0;i<total_error;i++)
-    // {
-    //     if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
-    //     else transmitted_data[error_indices[i]]='0';
-    // }
-
 
 }
 
@@ -229,7 +197,7 @@ void BER(float ber,char transmitted_data[])
 
 int isErrorFree(int Gen_poly[], char received_data[])
 {
-    printf("Received data %s\n", received_data);
+    // printf("Received data %s\n", received_data);
     int received_data_length = strlen(received_data);
     int received_data_bits[received_data_length];
 
@@ -295,6 +263,7 @@ void * threadfunc(void * arg){
     int sqno = 0;
     // int bytes_read;
     for(;;){
+        memset(data_recieved, 0, BUFFER_SIZE+10);
         if(read(fd_accepted_socket, data_recieved, BUFFER_SIZE) == 0){
             break;
 
@@ -307,6 +276,9 @@ void * threadfunc(void * arg){
 
                 int recieved_sqn_no = data_recieved[strlen(data_recieved)-9]-'0';
 
+                printf("%s \n", data_recieved);
+
+
                 int check = isErrorFree(Gen_poly, data_recieved);
 
                 char sent_data[100];
@@ -316,13 +288,14 @@ void * threadfunc(void * arg){
                 char str[INET_ADDRSTRLEN];
                 getpeername(fd_accepted_socket, (struct sockaddr *)&sock, (socklen_t *)&len);
                 inet_ntop(AF_INET, &(sock.sin_addr), str, INET_ADDRSTRLEN);
-                // printf("Message Recieved from %s and port number %d is : %s\n", str, ntohs(sock.sin_port), data_recieved);
-                // printf("Recieved Sqno: %d", recieved_sqn_no);
+
+                printf("Value recieved at the server from ip address %s and port number %d : \n", str, ntohs(sock.sin_port));
+                printf("%s \n", data_recieved);
 
                 if (check == 1){
                     // error free
                     if (recieved_sqn_no == sqno){
-                        // send ACK
+                    //    send ACK
                         sent_data[0] = '1';
                         sent_data[1] = sqno + '0';
                         sqno = 1-sqno;
@@ -338,30 +311,25 @@ void * threadfunc(void * arg){
                     // error is there
                     // send NACK
 
-                    printf("The recieved value has error");
+                    printf("The recieved value has error \n");
                     sent_data[0] = '0';
                     sent_data[1] = sqno + '0';
 
                 }
-                char sent_data2[BUFFER_SIZE];
 
+                char sent_data2[BUFFER_SIZE];
                 CRC(Gen_poly, sent_data, sent_data2);
-                printf("Transmitted data after CRC %s\n", sent_data2);
+                printf("Transmitted data after CRC %s \n", sent_data2);
                 BER(BIT_ERROR_RATE, sent_data2);
-                printf("Transmitted data after Bit error generation %s\n", sent_data2);
+                printf("Transmitted data after Bit error generation %s \n", sent_data2);
                 send(fd_accepted_socket, sent_data2, strlen(sent_data2), 0);
                 fflush(stdout);
-
 
             }
 
         }
 
-
     }
-
-
-
     // terminate the thread and connection
     // close socket
     print_close_socket(fd_accepted_socket);
@@ -386,8 +354,6 @@ void * threadfunc(void * arg){
 
 int main(int argc, char* argv[])
 {
-
-
 
     for(int i = 0; i < MAX_CONNECTIONS; i++){
         allsockets[i] = -1;
@@ -428,12 +394,12 @@ int main(int argc, char* argv[])
     }
 
     int opt=1;
-    // Forcefully attaching socket to the port  
+
     
 
 
     if (setsockopt(fd_listening_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
-        perror("Unable to start the server socket with required options for server"); 
+        perror("Unable to start the server socket with required options for server \n"); 
         return -1; 
     }
 
@@ -469,8 +435,8 @@ int main(int argc, char* argv[])
     }
 
 
-pthread_t threadids[MAX_CONNECTIONS] = {[0 ... MAX_CONNECTIONS -1] = pthread_self()};
-int j = 0;
+    pthread_t threadids[MAX_CONNECTIONS] = {[0 ... MAX_CONNECTIONS -1] = pthread_self()};
+    int j = 0;
 
 
 
@@ -493,7 +459,7 @@ int j = 0;
             fd_accepted_socket = accept(fd_listening_socket, (struct sockaddr *)&accepted_socket, &len_accepted_socket);
 
             if(fd_accepted_socket < 0){
-                perror("Error in connection");
+                perror("Error in connection \n");
                 continue;
             }
 
@@ -515,8 +481,8 @@ int j = 0;
 
 
         if ((pthread_create(&threadids[j], NULL, threadfunc, &fd_accepted_socket)) == 0){
-            // printf("Thread created %ld\n", threadids[j]);
-            // success
+
+
         }
         else{
 
@@ -537,21 +503,14 @@ int j = 0;
             j %= MAX_CONNECTIONS;
 
         }
-        // printf("Dodo");
-        // fflush(stdout);
+
+        fflush(stdout);
 
         if(threadids[j] != pthread_self()){
             pthread_join(threadids[j], NULL);
-            // printf("Thread joined %ld\n", threadids[j]);
+
             threadids[j] = pthread_self();
         }
-
-
-
-
-
-
-
 
 
     }

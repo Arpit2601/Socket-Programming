@@ -365,6 +365,7 @@ int main(int argc, char  *argv[])
         printf("Enter the data to be transmitted: \n");
         // Removing previous data 
         memset(data, 0, 2000);
+        memset(transmitted_data, 0, 2010);
         fgets(data, 2000, stdin);
         int size = strlen(data);
         // printf("%d\n",size);
@@ -374,7 +375,7 @@ int main(int argc, char  *argv[])
         }
         else data[size-1]='1';
         data[size]='\0';
-        // printf("%s\n", data);
+        printf("%s\n", data);
         CRC(Gen_poly, data, transmitted_data);
         // strcpy(after_CRC, transmitted_data);
         printf("CRC based transmitted data: %s\n", transmitted_data);
