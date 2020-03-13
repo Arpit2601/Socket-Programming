@@ -161,7 +161,7 @@ void CRC(int Gen_poly[], char data[], char transmitted_data[])
         else temp_char='1';
         transmitted_data[data_bits_length-8+i]=temp_char;
     }
-    transmitted_data[data_bits_length+1]='\0';
+    transmitted_data[data_bits_length]='\0';
 }
 
 // Inverts random bits based on BER 
