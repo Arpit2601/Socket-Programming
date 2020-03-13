@@ -16,7 +16,7 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#define MAX_CONNECTIONS 2
+#define MAX_CONNECTIONS 50
 #define BUFFER_SIZE 2010
 #define BIT_ERROR_RATE 0.00
 
@@ -286,10 +286,14 @@ void * threadfunc(void * arg){
                 int check = isErrorFree(Gen_poly, data_recieved);    // if data is corrupted or not 
 
                 char sent_data[100];
+                memset(sent_data, 0, 100);
+
                 sent_data[2] = '\0';
                 struct sockaddr_in sock;
                 socklen_t len = sizeof(struct sockaddr_in);
                 char str[INET_ADDRSTRLEN];
+                memset(str, 0, INET_ADDRSTRLEN);
+                
                 getpeername(fd_accepted_socket, (struct sockaddr *)&sock, (socklen_t *)&len);
                 inet_ntop(AF_INET, &(sock.sin_addr), str, INET_ADDRSTRLEN);
 
@@ -323,6 +327,7 @@ void * threadfunc(void * arg){
                 }
 
                 char sent_data2[BUFFER_SIZE];
+                memset(sent_data2, 0, BUFFER_SIZE);
                 CRC(Gen_poly, sent_data, sent_data2);
                 printf("Transmitted data after CRC %s \n", sent_data2);
                 BER(BIT_ERROR_RATE, sent_data2);
@@ -500,8 +505,8 @@ int main(int argc, char* argv[])
 
         if(threadids[j] != pthread_self()){
             pthread_join(threadids[j], NULL);
-
             threadids[j] = pthread_self();
+        
         }
 
     }
