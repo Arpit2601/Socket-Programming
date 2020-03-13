@@ -10,6 +10,8 @@
 #include<time.h>
 #include<ctype.h>
 #include<math.h>
+#include<sys/time.h>
+#include<stdbool.h>
 
 int isValidIp4 (char *str) {
     int segs = 0;   /* Segment count. */
@@ -166,31 +168,7 @@ void CRC(int Gen_poly[], char data[], char transmitted_data[])
 void BER(float ber,char transmitted_data[])
 {
     int transmitted_data_length = strlen(transmitted_data);
-    // number of bits you want error in 
-    // int total_error = floor(ber*transmitted_data_length);
-    // printf("Bits to be reversed: %d\n",total_error);
 
-    // int uniqueflag;
-    // int error_indices[total_error];
-    // int random;
-    // for(int i = 0; i < total_error; i++) 
-    // {
-    //     do {
-    //         /* Assume things are unique... we'll reset this flag if not. */
-    //         uniqueflag = 1;
-    //         random = rand() % transmitted_data_length+ 1;
-    //         /* This loop checks for uniqueness */
-    //         for (int j = 0; j < i && uniqueflag == 1; j++) 
-    //         {
-    //             if (error_indices[j] == random) 
-    //             {
-    //                 uniqueflag = 0;
-    //             }
-    //         }
-    //     } while (uniqueflag != 1);
-    //     error_indices[i] = random;
-    //     // printf("Index %d\n", random);
-    // }
     double temp;
 
     for(int i=0;i<transmitted_data_length;i++)
@@ -207,13 +185,6 @@ void BER(float ber,char transmitted_data[])
         }
         
     }
-    // for(int i=0;i<total_error;i++)
-    // {
-    //     if(transmitted_data[error_indices[i]]=='0'){transmitted_data[error_indices[i]]='1';}
-    //     else transmitted_data[error_indices[i]]='0';
-    // }
-
-
 }
 
 // if received data is completely divisible by generator function then no error was inserted and function returns true 
@@ -354,7 +325,7 @@ int main(int argc, char  *argv[])
     // Sequence number
     int seq = 0;
     // time to wait before retransmitting i.e. wait for 5 seconds
-    int timeout = 5;
+    // int timeout = 5;
     // Data after CRC
     // char after_CRC[2010];
     while (1)
@@ -365,8 +336,10 @@ int main(int argc, char  *argv[])
         printf("Enter the data to be transmitted: \n");
         // Removing previous data 
         memset(data, 0, 2000);
-        memset(transmitted_data, 0, 2010);
-        fgets(data, 2000, stdin);
+
+        memset(transmitted_data, 0, 2000);
+        fgets(data, 2000-1, stdin);
+
         int size = strlen(data);
         // printf("%d\n",size);
         if(seq==0)
@@ -394,89 +367,112 @@ int main(int argc, char  *argv[])
 
         // the attributes are:socket descriptor, buffer containing data, message length, flag
         send(sockfd, transmitted_data, strlen(transmitted_data), 0);
-        clock_t start = clock();
+        // clock_t start = clock();
         // Message sent now wait to receive message from server
         while (1)
         {
-            // Server can send a maximum of 2010 bits data
-            // 2000 bits of data 
-            // 1 bit for sequence number
-            // 1 bit for ACK/NAK
-            // rest 8 bits for CRC
-
-            int val = read(sockfd, received_data, 2010);
-            if(!val)
+            fd_set rfds;
+            struct timeval tv;
+            int retval;
+            FD_ZERO(&rfds);
+            FD_SET(sockfd, &rfds);
+            tv.tv_sec = 0;
+            tv.tv_usec = 10;
+            retval = select(sockfd+1, &rfds, NULL, NULL, &tv);
+            if(retval==0)
             {
-                printf("Server has closed the connection\n");
-                return -1;
-            }
-
-            // If timeout occurs before server has data then retransmit
-            if((clock()-start)/CLOCKS_PER_SEC>=timeout)
-            {
-                
+                CRC(Gen_poly, data, transmitted_data);
+                BER(ber, transmitted_data);
                 send(sockfd, transmitted_data, strlen(transmitted_data), 0);
-                start = clock();
-                printf("Timeout Occurred\n");
+                // start = clock();
+                printf("Timeout Occurred\nRetransmitting\n");
                 continue;
-            }
-            // If server sends no data then do something
-            // ElseIf server has sent the data then 3 cases can occur
-            // 1. Received data is not error free then retransmit
-            // 2. Received data is error free but NAK then retransmit
-            // 3. Received data error free and ACK but for wrong sequence number then retransmit
-            // 4. Received data error free and ACK and for right sequence number then take input and send next data with new sequence number
-
-            if(strlen(received_data)==0)
-            {
-
             }
             else
             {
-                // Received data in char[] array send it to isErrorFree function to check if the received function has somw error
-                int val = isErrorFree(Gen_poly,received_data); 
-                // The first bit in received data is flag and second is sequence number 
-                // ACK/NAK flag
-                int flag = received_data[0]-'0';
-                // Received ACK/NAK flag for this sequence number
-                int recv_seq = received_data[1]-'0';   
-                
-                // Case 1       
+                // Server can send a maximum of 2010 bits data
+                // 2000 bits of data 
+                // 1 bit for sequence number
+                // 1 bit for ACK/NAK
+                // rest 8 bits for CRC
+
+                int val = recv(sockfd, received_data, 2010,0);
                 if(!val)
                 {
-                    CRC(Gen_poly, data, transmitted_data);
-                    BER(ber, transmitted_data);
-                    send(sockfd, transmitted_data, strlen(transmitted_data), 0);
-                    printf("Error in received data.\nRetrnasmitting...\n");
-                    start = clock();
+                    printf("Server has closed the connection\n");
+                    return -1;
                 }
-                // Case 2
-                else if(val && !flag)
+
+                // If timeout occurs before server has data then retransmit
+                // if((clock()-start)/CLOCKS_PER_SEC>=timeout)
+                // {
+                //     CRC(Gen_poly, data, transmitted_data);
+                //     BER(ber, transmitted_data);
+                //     send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                //     start = clock();
+                //     printf("Timeout Occurred\n");
+                //     continue;
+                // }
+                // If server sends no data then do something
+                // ElseIf server has sent the data then 3 cases can occur
+                // 1. Received data is not error free then retransmit
+                // 2. Received data is error free but NAK then retransmit
+                // 3. Received data error free and ACK but for wrong sequence number then retransmit
+                // 4. Received data error free and ACK and for right sequence number then take input and send next data with new sequence number
+
+                if(strlen(received_data)==0)
                 {
-                    CRC(Gen_poly, data, transmitted_data);
-                    BER(ber, transmitted_data);
-                    send(sockfd, transmitted_data, strlen(transmitted_data), 0);
-                    printf("received NAK.\nRetrnasmitting...\n");
-                    start = clock();
+
                 }
-                // Case 3
-                else if(val && flag && seq!=recv_seq)
-                {
-                    CRC(Gen_poly, data, transmitted_data);
-                    BER(ber, transmitted_data);
-                    send(sockfd, transmitted_data, strlen(transmitted_data), 0);
-                    printf("Received ACK for wrong sequence number.\nRetrnasmitting...\n");
-                    start = clock();
-                }
-                // Case 4
                 else
                 {
-                    printf("Message received correctly by server \n");
-                    seq = 1-seq;
-                    break;
+                    // Received data in char[] array send it to isErrorFree function to check if the received function has somw error
+                    int val = isErrorFree(Gen_poly,received_data); 
+                    // The first bit in received data is flag and second is sequence number 
+                    // ACK/NAK flag
+                    int flag = received_data[0]-'0';
+                    // Received ACK/NAK flag for this sequence number
+                    int recv_seq = received_data[1]-'0';   
+                    
+                    // Case 1       
+                    if(!val)
+                    {
+                        CRC(Gen_poly, data, transmitted_data);
+                        BER(ber, transmitted_data);
+                        send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                        printf("Error in received data.\nRetrnasmitting...\n");
+                        // start = clock();
+                    }
+                    // Case 2
+                    else if(val && !flag)
+                    {
+                        CRC(Gen_poly, data, transmitted_data);
+                        BER(ber, transmitted_data);
+                        send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                        printf("received NAK.\nRetrnasmitting...\n");
+                        // start = clock();
+                    }
+                    // Case 3
+                    else if(val && flag && seq!=recv_seq)
+                    {
+                        CRC(Gen_poly, data, transmitted_data);
+                        BER(ber, transmitted_data);
+                        send(sockfd, transmitted_data, strlen(transmitted_data), 0);
+                        printf("Received ACK for wrong sequence number.\nRetrnasmitting...\n");
+                        // start = clock();
+                    }
+                    // Case 4
+                    else
+                    {
+                        printf("Message received correctly by server \n");
+                        seq = 1-seq;
+                        break;
+                    }
+                    
                 }
-                
             }
+            
+            
             
         }
         

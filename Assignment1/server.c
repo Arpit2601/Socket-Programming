@@ -343,14 +343,7 @@ void * threadfunc(void * arg){
 
     pthread_exit(NULL);
     // close the thread
-
 }
-
-
-
-
-
-
 
 int main(int argc, char* argv[])
 {
@@ -358,7 +351,6 @@ int main(int argc, char* argv[])
     for(int i = 0; i < MAX_CONNECTIONS; i++){
         allsockets[i] = -1;
     }
-
 
     if(argc!=2)
     {
@@ -368,7 +360,6 @@ int main(int argc, char* argv[])
 
     int server_port = atoi(argv[1]);
 
-
     signal(SIGINT, control_c_handler);
 
     int fd_listening_socket = 0;
@@ -377,14 +368,11 @@ int main(int argc, char* argv[])
     socklen_t len_accepted_socket;
     int fd_accepted_socket = 0;
 
-
-
     if(server_port<0 || server_port>65535 || !isNumber(argv[1]))
     {
         perror("Port number not correct\n");
         return -1;
     }
-
 
     // Creating socket file descriptor 
     if((fd_listening_socket = socket(AF_INET, SOCK_STREAM, 0))<=0)
@@ -395,8 +383,7 @@ int main(int argc, char* argv[])
 
     int opt=1;
 
-    
-
+    // Forcefully attaching socket to the port  
 
     if (setsockopt(fd_listening_socket, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
         perror("Unable to start the server socket with required options for server \n"); 
@@ -409,20 +396,12 @@ int main(int argc, char* argv[])
 
     memset((listening_socket.sin_zero), 0 , sizeof(listening_socket.sin_zero));
 
-
-
-
     // Binding socket to port specified as input
     if(bind(fd_listening_socket, (struct sockaddr *)&listening_socket, sizeof(listening_socket))<0)
     {
         perror("Binding failed\n");
         return -1;
     }
-
-
-
-
-
 
     if(listen(fd_listening_socket, MAX_CONNECTIONS) < 0)
     {
@@ -477,9 +456,6 @@ int main(int argc, char* argv[])
 
         }
 
-
-
-
         if ((pthread_create(&threadids[j], NULL, threadfunc, &fd_accepted_socket)) == 0){
 
 
@@ -491,7 +467,6 @@ int main(int argc, char* argv[])
             close(fd_accepted_socket);
             continue;
         }
-
 
         fflush(stdout);
 
@@ -512,9 +487,5 @@ int main(int argc, char* argv[])
             threadids[j] = pthread_self();
         }
 
-
     }
-    
-
-    
 }
