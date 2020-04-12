@@ -53,20 +53,19 @@ void ThroughputMonitor (FlowMonitorHelper* flowmonHelper, Ptr<FlowMonitor> flowM
 int 
 main (int argc, char *argv[])
 {
-    Gnuplot2dDataset UTdataset, UDdataset, STdataset, SDdataset;
+    Gnuplot2dDataset UTdataset, UDdataset, VTdataset, VDdataset;
     // dataset.SetTitle ("UDP_throughput");
 	UTdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
     // delay_dataset.SetTitle ("UDP_delay");
 	UDdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-    SDdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-    STdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+    VDdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+    VTdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
     
 
 
     CommandLine cmd;
     cmd.Parse (argc, argv);
-    Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue ("ns3::TcpScalable"));
-    // Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TypeId::LookupByName ("ns3::TcpScalable")));
+    Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TypeId::LookupByName ("ns3::TcpVegas")));
     throughfout.open("throughput_udp_alone.csv", std::ios::out);
     delayfout.open("delay_udp_alone.csv", std::ios::out);
 
@@ -253,11 +252,11 @@ main (int argc, char *argv[])
         std::cout<<packet_size<<" "<<Sthroughput<<" "<<count<<std::endl;
         std::cout<<packet_size<<" "<<Sdelay/Stotal_packets<<" "<<count<<std::endl;
 
-        // UTdataset, UDdataset, STdataset, SDdataset;
+        // UTdataset, UDdataset, VTdataset, VDdataset;
         UTdataset.Add(packet_size, Uthroughput);
         UDdataset.Add(packet_size, Udelay/Utotal_packets);
-        STdataset.Add(packet_size, Sthroughput);
-        SDdataset.Add(packet_size, Sdelay/Stotal_packets);
+        VTdataset.Add(packet_size, Sthroughput);
+        VDdataset.Add(packet_size, Sdelay/Stotal_packets);
 
         Simulator::Destroy(); 
         //-------------------------------------- 
@@ -267,15 +266,15 @@ main (int argc, char *argv[])
     
 
     //Initialize Plot file names  
-    std :: string fileNameWithNoExtension = "USthroughput";
+    std :: string fileNameWithNoExtension = "UVthroughput";
     std :: string graphicsFileName        = fileNameWithNoExtension + ".png";
     std :: string plotFileName            = fileNameWithNoExtension + ".plt";
-    std :: string plotTitle               = "udp and scalable throughput vs packet size";
+    std :: string plotTitle               = "udp and vegas throughput vs packet size";
 
-    std :: string fileNameWithNoExtension_delay = "USdelay";
+    std :: string fileNameWithNoExtension_delay = "UVdelay";
     std :: string graphicsFileName_delay        = fileNameWithNoExtension_delay + ".png";
     std :: string plotFileName_delay            = fileNameWithNoExtension_delay + ".plt";
-    std :: string plotTitle_delay               = "udp and scalable delay vs packet size";
+    std :: string plotTitle_delay               = "udp and vegas delay vs packet size";
 
    
     // Instantiate the plot and set its title.
@@ -301,9 +300,9 @@ main (int argc, char *argv[])
     
     // Add the dataset to the plot.
     plot.AddDataset (UTdataset);
-    plot.AddDataset(STdataset);
+    plot.AddDataset(VTdataset);
     plot_delay.AddDataset(UDdataset);
-    plot_delay.AddDataset(SDdataset);
+    plot_delay.AddDataset(VDdataset);
     
     // Open the plot file for fairness
     std::ofstream plotFile (plotFileName.c_str());
