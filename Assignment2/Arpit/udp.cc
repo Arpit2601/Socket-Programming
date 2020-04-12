@@ -53,10 +53,11 @@ void ThroughputMonitor (FlowMonitorHelper* flowmonHelper, Ptr<FlowMonitor> flowM
 int 
 main (int argc, char *argv[])
 {
-    Gnuplot2dDataset dataset;
+    Gnuplot2dDataset dataset, delay_dataset;
     dataset.SetTitle ("UDP_throughput");
 	dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-
+    delay_dataset.SetTitle ("UDP_delay");
+	delay_dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
 
 
     CommandLine cmd;
@@ -167,14 +168,14 @@ main (int argc, char *argv[])
         client_apps.Stop (Seconds (simulation_time));
         //----------------------------------------------------------
         NS_LOG_INFO("Run Simulation");
-        Simulator::Stop(Seconds(7.0));
+        Simulator::Stop(Seconds(6.0));
         Simulator::Run();
         
 
         // Simulator::Stop(Seconds(simulation_time+2));
         // ThroughputMonitor(&flowmonHelper ,flowmon);
         //-------------------------
-        // flowmon->CheckForLostPackets(); 
+        flowmon->CheckForLostPackets(); 
         std::map<FlowId, FlowMonitor::FlowStats> flowStats = flowmon->GetFlowStats();
         Ptr<Ipv4FlowClassifier> classing = DynamicCast<Ipv4FlowClassifier> (flowmonHelper.GetClassifier());
         Time now = Simulator::Now (); 
@@ -197,7 +198,7 @@ main (int argc, char *argv[])
             throughput += stats->second.rxBytes * 8.0 / (stats->second.timeLastRxPacket.GetSeconds() - stats->second.timeFirstTxPacket.GetSeconds())/1024/1024;            // std::cout<<"Throughput: " << throughput << " Mbps"<<std::endl;
             // std::cout<< "Net Packet Lost: " << stats->second.lostPackets << "\n";
             // std::cout<<"Delay Sum :"<<stats->second.delaySum<<std::endl;;
-            delay = stats->second.delaySum.GetMilliSeconds();
+            delay = stats->second.delaySum.GetSeconds();
             // std::cout<<stats->second.rxBytes<<" "<<stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds()<<'\n';
             // std::cout<<"---------------------------------------------------------------------------"<<std::endl;
             // throughfout<<(double)stats->first<<", "<<throughput<<", ";
@@ -207,6 +208,7 @@ main (int argc, char *argv[])
         std::cout<<packet_size_udp<<" "<<throughput/count<<" "<<count<<std::endl;
         std::cout<<packet_size_udp<<" "<<delay/total_packets<<" "<<count<<std::endl;
         dataset.Add(packet_size_udp, throughput/count);
+        delay_dataset.Add(packet_size_udp, delay/total_packets);
         // throughfout<<'\n';
         // delayfout<<'\n';
         // flowmon->SerializeToXmlFile("lab-5.flowmon", true, true);
@@ -224,34 +226,46 @@ main (int argc, char *argv[])
     std :: string plotFileName            = fileNameWithNoExtension + ".plt";
     std :: string plotTitle               = "udp throughput vs packet size";
 
+    std :: string fileNameWithNoExtension_delay = "udp_delay";
+    std :: string graphicsFileName_delay        = fileNameWithNoExtension_delay + ".png";
+    std :: string plotFileName_delay            = fileNameWithNoExtension_delay + ".plt";
+    std :: string plotTitle_delay               = "udp delay vs packet size";
+
    
     // Instantiate the plot and set its title.
     Gnuplot plot (graphicsFileName);
+    Gnuplot plot_delay (graphicsFileName_delay);
 
     plot.SetTitle (plotTitle);
+    plot_delay.SetTitle(plotTitle_delay);
     
     // Make the graphics file, which the plot file will create when it
     // is used with Gnuplot, be a PNG file.
     plot.SetTerminal ("png");
+    plot_delay.SetTerminal("png");
     
     // Set the labels for each axis.
     // plot.SetLegend ("Buffer Size(packets)", "Fairness");
     
     //Set the x value ranges for each plots
     // plot.AppendExtra ("set xrange [0:800]");
-    plot.AppendExtra ("set yrange [0:+2]");
+    plot.AppendExtra ("set yrange [0:+0.5]");
+    plot_delay.AppendExtra("set yrange [0:+0.2]");
     
     
     // Add the dataset to the plot.
     plot.AddDataset (dataset);
+    plot_delay.AddDataset(delay_dataset);
     
     // Open the plot file for fairness
     std::ofstream plotFile (plotFileName.c_str());
+    std::ofstream plotFile_delay (plotFileName_delay.c_str());
     // Write the plot file.
     plot.GenerateOutput (plotFile);
+    plot_delay.GenerateOutput (plotFile_delay);
     // Close the plot file.
     plotFile.close ();
-
+    plotFile_delay.close();
     //Open the plot file for TCP throughput
     Simulator::Destroy ();
     NS_LOG_INFO ("Done :)");

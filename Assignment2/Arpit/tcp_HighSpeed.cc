@@ -53,10 +53,11 @@ void ThroughputMonitor (FlowMonitorHelper* flowmonHelper, Ptr<FlowMonitor> flowM
 int 
 main (int argc, char *argv[])
 {
-    Gnuplot2dDataset  tcp_dataset;
+    Gnuplot2dDataset  tcp_dataset, delay_dataset;
     tcp_dataset.SetTitle ("TCP_HighSpeed_throughput");
 	tcp_dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-
+    delay_dataset.SetTitle ("TCP_HighSpeed_delay");
+	delay_dataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
 
 
     CommandLine cmd;
@@ -164,14 +165,14 @@ main (int argc, char *argv[])
         sink_ftpApp.Stop (Seconds (simulation_time));
         //----------------------------------------------------------
         NS_LOG_INFO("Run Simulation");
-        Simulator::Stop(Seconds(7.0));
+        Simulator::Stop(Seconds(6.0));
         Simulator::Run();
         
 
         // Simulator::Stop(Seconds(simulation_time+2));
         // ThroughputMonitor(&flowmonHelper ,flowmon);
         //-------------------------
-        // flowmon->CheckForLostPackets(); 
+        flowmon->CheckForLostPackets(); 
         std::map<FlowId, FlowMonitor::FlowStats> flowStats = flowmon->GetFlowStats();
         Ptr<Ipv4FlowClassifier> classing = DynamicCast<Ipv4FlowClassifier> (flowmonHelper.GetClassifier());
         Time now = Simulator::Now (); 
@@ -179,18 +180,22 @@ main (int argc, char *argv[])
         // delayfout<<now<<", ";
         double throughput=0;
         int count=0;
+        double delay=0;
+        int total_packets=0;
         for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator stats = flowStats.begin (); stats != flowStats.end (); ++stats)
         { 
             count++;
             // Ipv4FlowClassifier::FiveTuple fiveTuple = classing->FindFlow (stats->first);
             // std::cout<<"Flow ID     : " << stats->first <<" ; "<< fiveTuple.sourceAddress <<" -----> "<<fiveTuple.destinationAddress<<std::endl;
             // std::cout<<"Tx Packets = " << stats->second.txPackets<<std::endl;
+            total_packets = stats->second.txPackets;
             // std::cout<<"Rx Packets = " << stats->second.rxPackets<<std::endl;
             // std::cout<<"Duration    : "<<stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds()<<std::endl;
             // std::cout<<"Last Received Packet  : "<< stats->second.timeLastRxPacket.GetSeconds()<<" Seconds"<<std::endl;
             throughput += stats->second.rxBytes * 8.0 / (stats->second.timeLastRxPacket.GetSeconds() - stats->second.timeFirstTxPacket.GetSeconds())/1024/1024;            // std::cout<<"Throughput: " << throughput << " Mbps"<<std::endl;
             // std::cout<< "Net Packet Lost: " << stats->second.lostPackets << "\n";
             // std::cout<<"Delay Sum :"<<stats->second.delaySum<<std::endl;;
+             delay = stats->second.delaySum.GetSeconds();
             // std::cout<<stats->second.rxBytes<<" "<<stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds()<<'\n';
             // std::cout<<"---------------------------------------------------------------------------"<<std::endl;
             // throughfout<<(double)stats->first<<", "<<throughput<<", ";
@@ -198,7 +203,9 @@ main (int argc, char *argv[])
             // delays[stats->first]=stats-/>second.delaySum.GetMilliSeconds();
         }
         std::cout<<packet_size_tcp<<" "<<throughput/count<<" "<<count<<std::endl;
+        std::cout<<packet_size_tcp<<" "<<delay/total_packets<<" "<<count<<std::endl;    
         tcp_dataset.Add(packet_size_tcp, throughput/count);
+        delay_dataset.Add(packet_size_tcp, delay/total_packets);
         // throughfout<<'\n';
         // delayfout<<'\n';
         // flowmon->SerializeToXmlFile("lab-5.flowmon", true, true);
@@ -216,32 +223,46 @@ main (int argc, char *argv[])
     std :: string graphicsFileName_tcp        = fileNameWithNoExtension_tcp + ".png";
     std :: string plotFileName_tcp            = fileNameWithNoExtension_tcp + ".plt";
     std :: string plotTitle_tcp               = "tcp highspeed throughput vs packet size";
+
+    std :: string fileNameWithNoExtension_tcp_delay = "tcp_HighSpeed_delay";
+    std :: string graphicsFileName_tcp_delay        = fileNameWithNoExtension_tcp_delay + ".png";
+    std :: string plotFileName_tcp_delay            = fileNameWithNoExtension_tcp_delay + ".plt";
+    std :: string plotTitle_tcp_delay               = "tcp highspeed throughput vs packet size";
     // Instantiate the plot and set its title.
     Gnuplot plot_tcp (graphicsFileName_tcp);
+    Gnuplot plot_tcp_delay (graphicsFileName_tcp_delay);
 
     plot_tcp.SetTitle(plotTitle_tcp);
+    plot_tcp_delay.SetTitle(plotTitle_tcp_delay);
     
     // Make the graphics file, which the plot file will create when it
     // is used with Gnuplot, be a PNG file.
     plot_tcp.SetTerminal("png");
+    plot_tcp_delay.SetTerminal("png");
     
     // Set the labels for each axis.
     // plot.SetLegend ("Buffer Size(packets)", "Fairness");
     
     //Set the x value ranges for each plots
     // plot.AppendExtra ("set xrange [0:800]");
-    plot_tcp.AppendExtra ("set yrange [0:+2]");
-    
+    plot_tcp.AppendExtra ("set yrange [0:+0.5]");
+    plot_tcp_delay.AppendExtra ("set yrange [0:+0.5]");
+
     
     // Add the dataset to the plot.
     plot_tcp.AddDataset (tcp_dataset);
-    
+    plot_tcp_delay.AddDataset (delay_dataset);
+
     // Open the plot file for fairness
     std::ofstream plotFile_tcp (plotFileName_tcp.c_str());
+    std::ofstream plotFile_tcp_delay (plotFileName_tcp_delay.c_str());
+
     // Write the plot file.
     plot_tcp.GenerateOutput(plotFile_tcp);
+    plot_tcp_delay.GenerateOutput(plotFile_tcp_delay);
     // Close the plot file.
     plotFile_tcp.close();
+    plotFile_tcp_delay.close();
 
     //Open the plot file for TCP throughput
     Simulator::Destroy ();
