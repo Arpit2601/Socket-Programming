@@ -81,65 +81,8 @@ main (int argc, char *argv[])
     std::string q_rr_str= std::to_string(qsize_rr) + "p";
 
 
-   std::cout<<"Create nodes."<<std::endl;;
-    NodeContainer all_nodes;
-    all_nodes.Create(6);
-
-    NodeContainer rl_h1 = NodeContainer (all_nodes.Get (2), all_nodes.Get (0));
-    NodeContainer rl_h2 = NodeContainer (all_nodes.Get (2), all_nodes.Get (1));
-    NodeContainer rr_h3 = NodeContainer (all_nodes.Get (3), all_nodes.Get (4));
-    NodeContainer rr_h4 = NodeContainer (all_nodes.Get (3), all_nodes.Get (5));
-    NodeContainer rl_rr = NodeContainer (all_nodes.Get (2), all_nodes.Get (3));    
-
-    InternetStackHelper stack;
-    stack.Install (all_nodes);
-
-    std::cout<<"Create channels."<<std::endl;;
-    PointToPointHelper p2p_hr,p2p_rr;
-    p2p_hr.SetDeviceAttribute("DataRate", StringValue(rate_hr));
-	p2p_hr.SetChannelAttribute("Delay", StringValue(lat_hr));
-	p2p_hr.SetQueue ("ns3::DropTailQueue<Packet>", "MaxSize", QueueSizeValue (QueueSize (q_hr_str)));
-    // p2p_hr.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize",StringValue("200000"));
-
-    NetDeviceContainer dl_d1 = p2p_hr.Install (rl_h1);
-    NetDeviceContainer dl_d2 = p2p_hr.Install (rl_h2);
-    NetDeviceContainer dr_d3 = p2p_hr.Install (rr_h3);
-    NetDeviceContainer dr_d4 = p2p_hr.Install (rr_h4);
-
-	p2p_rr.SetDeviceAttribute("DataRate", StringValue(rate_rr));
-	p2p_rr.SetChannelAttribute("Delay", StringValue(lat_rr));
-	p2p_rr.SetQueue ("ns3::DropTailQueue<Packet>", "MaxSize", QueueSizeValue (QueueSize (q_rr_str))); 
-    // p2p_rr.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize",StringValue("375000"));
-
-    NetDeviceContainer dl_dr = p2p_rr.Install (rl_rr);
-
-
-    std::cout<<"Assign IP Addresses."<<std::endl;;
-    Ipv4AddressHelper ipv4;
-    ipv4.SetBase ("172.16.1.0", "255.255.255.0");
-    Ipv4InterfaceContainer il_i0 = ipv4.Assign (dl_d1);
-
-    ipv4.SetBase ("172.16.2.0", "255.255.255.0");
-    Ipv4InterfaceContainer il_i2 = ipv4.Assign (dl_d2);
-
-    ipv4.SetBase ("172.16.3.0", "255.255.255.0");
-    Ipv4InterfaceContainer ir_i3 = ipv4.Assign (dr_d3);
-
-    ipv4.SetBase ("172.16.4.0", "255.255.255.0");
-    Ipv4InterfaceContainer ir_i4 = ipv4.Assign (dr_d4);
-
-    ipv4.SetBase ("10.250.1.0", "255.255.255.0");
-    Ipv4InterfaceContainer il_ir = ipv4.Assign (dl_dr);
-
-    Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-
-    Ptr<FlowMonitor> flowmon;
-    FlowMonitorHelper flowmonHelper;
-    flowmon = flowmonHelper.InstallAll();
-
-    flowmon->SetAttribute("DelayBinWidth", DoubleValue(0.001));
-    flowmon->SetAttribute("JitterBinWidth", DoubleValue(0.001));
-    flowmon->SetAttribute("PacketSizeBinWidth", DoubleValue(20)); 
+    std::cout<<"Create nodes."<<std::endl;;
+    
 
    
     //-----------------------------------------------------
@@ -148,9 +91,61 @@ main (int argc, char *argv[])
     uint16_t port = 2;
     for (uint32_t packet_size_udp = 512; packet_size_udp < 5000; packet_size_udp+=64)
     {
+        NodeContainer all_nodes;
+        all_nodes.Create(6);
+
+        NodeContainer rl_h1 = NodeContainer (all_nodes.Get (2), all_nodes.Get (0));
+        NodeContainer rl_h2 = NodeContainer (all_nodes.Get (2), all_nodes.Get (1));
+        NodeContainer rr_h3 = NodeContainer (all_nodes.Get (3), all_nodes.Get (4));
+        NodeContainer rr_h4 = NodeContainer (all_nodes.Get (3), all_nodes.Get (5));
+        NodeContainer rl_rr = NodeContainer (all_nodes.Get (2), all_nodes.Get (3));    
+
+        InternetStackHelper stack;
+        stack.Install (all_nodes);
+
+        std::cout<<"Create channels."<<std::endl;;
+        PointToPointHelper p2p_hr,p2p_rr;
+        p2p_hr.SetDeviceAttribute("DataRate", StringValue(rate_hr));
+        p2p_hr.SetChannelAttribute("Delay", StringValue(lat_hr));
+        p2p_hr.SetQueue ("ns3::DropTailQueue<Packet>", "MaxSize", QueueSizeValue (QueueSize (q_hr_str)));
+        // p2p_hr.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize",StringValue("200000"));
+
+        NetDeviceContainer dl_d1 = p2p_hr.Install (rl_h1);
+        NetDeviceContainer dl_d2 = p2p_hr.Install (rl_h2);
+        NetDeviceContainer dr_d3 = p2p_hr.Install (rr_h3);
+        NetDeviceContainer dr_d4 = p2p_hr.Install (rr_h4);
+
+        p2p_rr.SetDeviceAttribute("DataRate", StringValue(rate_rr));
+        p2p_rr.SetChannelAttribute("Delay", StringValue(lat_rr));
+        p2p_rr.SetQueue ("ns3::DropTailQueue<Packet>", "MaxSize", QueueSizeValue (QueueSize (q_rr_str))); 
+        // p2p_rr.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize",StringValue("375000"));
+
+        NetDeviceContainer dl_dr = p2p_rr.Install (rl_rr);
+
+
+        std::cout<<"Assign IP Addresses."<<std::endl;;
+        Ipv4AddressHelper ipv4;
+        ipv4.SetBase ("172.16.1.0", "255.255.255.0");
+        Ipv4InterfaceContainer il_i0 = ipv4.Assign (dl_d1);
+
+        ipv4.SetBase ("172.16.2.0", "255.255.255.0");
+        Ipv4InterfaceContainer il_i2 = ipv4.Assign (dl_d2);
+
+        ipv4.SetBase ("172.16.3.0", "255.255.255.0");
+        Ipv4InterfaceContainer ir_i3 = ipv4.Assign (dr_d3);
+
+        ipv4.SetBase ("172.16.4.0", "255.255.255.0");
+        Ipv4InterfaceContainer ir_i4 = ipv4.Assign (dr_d4);
+
+        ipv4.SetBase ("10.250.1.0", "255.255.255.0");
+        Ipv4InterfaceContainer il_ir = ipv4.Assign (dl_dr);
+
+        Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+
+        
         /* code */
         OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (ir_i3.GetAddress (1), port));    //h3
-        onoff.SetConstantRate (DataRate ("100kbps"));   // why 100kbps
+        onoff.SetConstantRate (DataRate ("1000kbps"));   // why 100kbps
         onoff.SetAttribute ("PacketSize", UintegerValue (packet_size_udp));
 
         ApplicationContainer client_apps = onoff.Install (all_nodes.Get (0));  //h1-->server node
@@ -168,6 +163,17 @@ main (int argc, char *argv[])
         client_apps.Stop (Seconds (simulation_time));
         //----------------------------------------------------------
         NS_LOG_INFO("Run Simulation");
+        Ptr<FlowMonitor> flowmon;
+        FlowMonitorHelper flowmonHelper;
+        flowmon = flowmonHelper.InstallAll();
+
+        flowmon->SetAttribute("DelayBinWidth", DoubleValue(0.001));
+        flowmon->SetAttribute("JitterBinWidth", DoubleValue(0.001));
+        flowmon->SetAttribute("PacketSizeBinWidth", DoubleValue(20)); 
+        double throughput=0;
+        int count=0;
+        double delay=0;
+        int total_packets=0;
         Simulator::Stop(Seconds(6.0));
         Simulator::Run();
         
@@ -181,10 +187,7 @@ main (int argc, char *argv[])
         Time now = Simulator::Now (); 
         // throughfout<<now<<", ";
         // delayfout<<now<<", ";
-        double throughput=0;
-        int count=0;
-        double delay=0;
-        int total_packets=0;
+        
         for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator stats = flowStats.begin (); stats != flowStats.end (); ++stats)
         { 
             count++;
@@ -213,7 +216,7 @@ main (int argc, char *argv[])
         // delayfout<<'\n';
         // flowmon->SerializeToXmlFile("lab-5.flowmon", true, true);
         // Simulator::Schedule(MilliSeconds(100),&ThroughputMonitor, &flowmonHelper, flowmon);  
-        // Simulator::Destroy(); 
+        Simulator::Destroy(); 
         //-------------------------------------- 
         
     }
@@ -221,12 +224,12 @@ main (int argc, char *argv[])
     
 
     //Initialize Plot file names  
-    std :: string fileNameWithNoExtension = "udp_throughput";
+    std :: string fileNameWithNoExtension = "UDP_throughput";
     std :: string graphicsFileName        = fileNameWithNoExtension + ".png";
     std :: string plotFileName            = fileNameWithNoExtension + ".plt";
     std :: string plotTitle               = "udp throughput vs packet size";
 
-    std :: string fileNameWithNoExtension_delay = "udp_delay";
+    std :: string fileNameWithNoExtension_delay = "UDP_delay";
     std :: string graphicsFileName_delay        = fileNameWithNoExtension_delay + ".png";
     std :: string plotFileName_delay            = fileNameWithNoExtension_delay + ".plt";
     std :: string plotTitle_delay               = "udp delay vs packet size";
@@ -249,8 +252,8 @@ main (int argc, char *argv[])
     
     //Set the x value ranges for each plots
     // plot.AppendExtra ("set xrange [0:800]");
-    plot.AppendExtra ("set yrange [0:+0.5]");
-    plot_delay.AppendExtra("set yrange [0:+0.2]");
+    plot.AppendExtra ("set yrange [0:+2.0]");
+    plot_delay.AppendExtra ("set yrange [0.140:+0.143]");
     
     
     // Add the dataset to the plot.
