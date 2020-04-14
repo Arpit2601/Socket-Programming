@@ -14,41 +14,7 @@
 #include "ns3/stats-module.h"
 
 using namespace ns3;
-std::fstream throughfout,delayfout;
-int64_t delays[3]={(int64_t)0};
 NS_LOG_COMPONENT_DEFINE("try");
-
-void ThroughputMonitor (FlowMonitorHelper* flowmonHelper, Ptr<FlowMonitor> flowMon)
-  { 
-    flowMon->CheckForLostPackets(); 
-    std::map<FlowId, FlowMonitor::FlowStats> flowStats = flowMon->GetFlowStats();
-    Ptr<Ipv4FlowClassifier> classing = DynamicCast<Ipv4FlowClassifier> (flowmonHelper->GetClassifier());
-    Time now = Simulator::Now (); 
-    throughfout<<now<<", ";
-    delayfout<<now<<", ";
-    for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator stats = flowStats.begin (); stats != flowStats.end (); ++stats)
-    { 
-        Ipv4FlowClassifier::FiveTuple fiveTuple = classing->FindFlow (stats->first);
-        std::cout<<"Flow ID     : " << stats->first <<" ; "<< fiveTuple.sourceAddress <<" -----> "<<fiveTuple.destinationAddress<<std::endl;
-        std::cout<<"Tx Packets = " << stats->second.txPackets<<std::endl;
-        std::cout<<"Rx Packets = " << stats->second.rxPackets<<std::endl;
-        std::cout<<"Duration    : "<<stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds()<<std::endl;
-        std::cout<<"Last Received Packet  : "<< stats->second.timeLastRxPacket.GetSeconds()<<" Seconds"<<std::endl;
-        double throughput =stats->second.rxBytes * 8.0 / ((stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds())*1024*1024);
-        std::cout<<"Throughput: " << throughput << " Mbps"<<std::endl;
-        std::cout<< "Net Packet Lost: " << stats->second.lostPackets << "\n";
-        std::cout<<"Delay Sum :"<<stats->second.delaySum<<std::endl;;
-        // std::cout<<stats->second.rxBytes<<" "<<stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds()<<'\n';
-        std::cout<<"---------------------------------------------------------------------------"<<std::endl;
-        throughfout<<(double)stats->first<<", "<<throughput<<", ";
-        delayfout<<(double)stats->first<<", "<<stats->second.delaySum.GetMilliSeconds()-delays[stats->first]<<", ";
-        delays[stats->first]=stats->second.delaySum.GetMilliSeconds();
-    } 
-    throughfout<<'\n';
-    delayfout<<'\n';
-    flowMon->SerializeToXmlFile("lab-5.flowmon", true, true);
-    Simulator::Schedule(MilliSeconds(100),&ThroughputMonitor, flowmonHelper, flowMon);      
-}
 
 int 
 main (int argc, char *argv[])
@@ -62,35 +28,26 @@ main (int argc, char *argv[])
 
     CommandLine cmd;
     cmd.Parse (argc, argv);
-    // Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TypeId::LookupByName ("ns3::TcpScalable")));
-    throughfout.open("throughput_udp_alone.csv", std::ios::out);
-    delayfout.open("delay_udp_alone.csv", std::ios::out);
 
     std::string rate_hr = "80Mbps";
 	std::string lat_hr = "20ms";
 	std::string rate_rr = "30Mbps";
 	std::string lat_rr = "100ms";
-    double simulation_time = 5.0;
-    // uint32_t packet_size_tcp = 1000;
-    // uint32_t packet_size_udp = 50;  
+    double simulation_time = 10.0; 
+	uint qsize_hr;
+	uint qsize_rr;
+    std::string q_hr_str;
+    std::string q_rr_str;
 
-	// uint packetSize = 1.2*1024;		//1.2KB
-	uint qsize_hr = 100000*20;
-	uint qsize_rr = 100*3750;
-    std::string q_hr_str= std::to_string(qsize_hr) + "p";
-    std::string q_rr_str= std::to_string(qsize_rr) + "p";
-
-
-    std::cout<<"Create nodes."<<std::endl;;
-    
-
-   
-    //-----------------------------------------------------
-    // Sending data from h1 to h3
-    // UDP server
     uint16_t port = 2;
+    
+    // packet size is in bytes
     for (uint32_t packet_size_udp = 512; packet_size_udp < 5000; packet_size_udp+=64)
     {
+        qsize_hr = 10000*20/packet_size_udp;
+        qsize_rr = 100*3750/packet_size_udp;
+        q_hr_str= std::to_string(qsize_hr) + "p";
+        q_rr_str= std::to_string(qsize_rr) + "p";
         NodeContainer all_nodes;
         all_nodes.Create(6);
 
@@ -103,7 +60,7 @@ main (int argc, char *argv[])
         InternetStackHelper stack;
         stack.Install (all_nodes);
 
-        std::cout<<"Create channels."<<std::endl;;
+        // std::cout<<"Create channels."<<std::endl;;
         PointToPointHelper p2p_hr,p2p_rr;
         p2p_hr.SetDeviceAttribute("DataRate", StringValue(rate_hr));
         p2p_hr.SetChannelAttribute("Delay", StringValue(lat_hr));
@@ -144,8 +101,8 @@ main (int argc, char *argv[])
 
         
         /* code */
-        OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (ir_i3.GetAddress (1), port));    //h3
-        onoff.SetConstantRate (DataRate ("1000kbps"));   // why 100kbps
+        OnOffHelper onoff ("ns3::UdpSocketFactory", InetSocketAddress (ir_i3.GetAddress (1), port));    
+        onoff.SetConstantRate (DataRate ("1000kbps"));  
         onoff.SetAttribute ("PacketSize", UintegerValue (packet_size_udp));
 
         ApplicationContainer client_apps = onoff.Install (all_nodes.Get (0));  //h1-->server node
@@ -155,7 +112,6 @@ main (int argc, char *argv[])
         PacketSinkHelper sink ("ns3::UdpSocketFactory",
                                 Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
         ApplicationContainer apps = sink.Install (all_nodes.Get (4));    // h3->client node
-        // apps = sink.Install (all_nodes.Get (4));    // h3
         apps.Start (Seconds (1.0));
         apps.Stop (Seconds (simulation_time));
 
@@ -174,57 +130,31 @@ main (int argc, char *argv[])
         int count=0;
         double delay=0;
         int total_packets=0;
-        Simulator::Stop(Seconds(6.0));
+        Simulator::Stop(Seconds(11.0));
         Simulator::Run();
-        
 
-        // Simulator::Stop(Seconds(simulation_time+2));
-        // ThroughputMonitor(&flowmonHelper ,flowmon);
-        //-------------------------
+        
         flowmon->CheckForLostPackets(); 
         std::map<FlowId, FlowMonitor::FlowStats> flowStats = flowmon->GetFlowStats();
         Ptr<Ipv4FlowClassifier> classing = DynamicCast<Ipv4FlowClassifier> (flowmonHelper.GetClassifier());
         Time now = Simulator::Now (); 
-        // throughfout<<now<<", ";
-        // delayfout<<now<<", ";
         
         for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator stats = flowStats.begin (); stats != flowStats.end (); ++stats)
-        { 
-            count++;
-            Ipv4FlowClassifier::FiveTuple fiveTuple = classing->FindFlow (stats->first);
-            std::cout<<"Flow ID     : " << stats->first <<" ; "<< fiveTuple.sourceAddress <<" -----> "<<fiveTuple.destinationAddress<<std::endl;
-            // std::cout<<"Tx Packets = " << stats->second.txPackets<<std::endl;
+        {
             total_packets = stats->second.txPackets;
-            // std::cout<<"Rx Packets = " << stats->second.rxPackets<<std::endl;
-            // std::cout<<"Duration    : "<<stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds()<<std::endl;
-            // std::cout<<"Last Received Packet  : "<< stats->second.timeLastRxPacket.GetSeconds()<<" Seconds"<<std::endl;
-            throughput += stats->second.rxBytes * 8.0 / (stats->second.timeLastRxPacket.GetSeconds() - stats->second.timeFirstTxPacket.GetSeconds())/1024/1024;            // std::cout<<"Throughput: " << throughput << " Mbps"<<std::endl;
-            // std::cout<< "Net Packet Lost: " << stats->second.lostPackets << "\n";
-            // std::cout<<"Delay Sum :"<<stats->second.delaySum<<std::endl;;
+            throughput += stats->second.rxBytes * 8.0 / (stats->second.timeLastRxPacket.GetSeconds() - stats->second.timeFirstTxPacket.GetSeconds())/1024/1024;           
             delay = stats->second.delaySum.GetSeconds();
-            // std::cout<<stats->second.rxBytes<<" "<<stats->second.timeLastRxPacket.GetSeconds()-stats->second.timeFirstTxPacket.GetSeconds()<<'\n';
-            // std::cout<<"---------------------------------------------------------------------------"<<std::endl;
-            // throughfout<<(double)stats->first<<", "<<throughput<<", ";
-            // delayfout<<(double)stats->first<<", "<<stats->second.delaySum.GetMilliSeconds()-delays[stats->first]<<", ";
-            // delays[stats->first]=stats-/>second.delaySum.GetMilliSeconds();
         }
-        std::cout<<packet_size_udp<<" "<<throughput/count<<" "<<count<<std::endl;
-        std::cout<<packet_size_udp<<" "<<delay/total_packets<<" "<<count<<std::endl;
-        dataset.Add(packet_size_udp, throughput/count);
-        delay_dataset.Add(packet_size_udp, delay/total_packets);
-        // throughfout<<'\n';
-        // delayfout<<'\n';
-        // flowmon->SerializeToXmlFile("lab-5.flowmon", true, true);
-        // Simulator::Schedule(MilliSeconds(100),&ThroughputMonitor, &flowmonHelper, flowmon);  
+        std::cout<<"Throughput for packet size: "<<packet_size_udp<<" is "<<throughput<<"Mbps"<<std::endl;
+        std::cout<<"Delay for packet size: "<<packet_size_udp<<" is "<<delay/total_packets<<"s "<<std::endl;    
+        dataset.Add(packet_size_udp, throughput);
+        delay_dataset.Add(packet_size_udp, delay/total_packets); 
         Simulator::Destroy(); 
         //-------------------------------------- 
         
     }
     
-    
-
-    //Initialize Plot file names  
-    std :: string fileNameWithNoExtension = "UDP_throughput";
+        std :: string fileNameWithNoExtension = "UDP_throughput";
     std :: string graphicsFileName        = fileNameWithNoExtension + ".png";
     std :: string plotFileName            = fileNameWithNoExtension + ".plt";
     std :: string plotTitle               = "udp throughput vs packet size";
@@ -235,41 +165,29 @@ main (int argc, char *argv[])
     std :: string plotTitle_delay               = "udp delay vs packet size";
 
    
-    // Instantiate the plot and set its title.
     Gnuplot plot (graphicsFileName);
     Gnuplot plot_delay (graphicsFileName_delay);
 
     plot.SetTitle (plotTitle);
     plot_delay.SetTitle(plotTitle_delay);
     
-    // Make the graphics file, which the plot file will create when it
-    // is used with Gnuplot, be a PNG file.
+
     plot.SetTerminal ("png");
     plot_delay.SetTerminal("png");
-    
-    // Set the labels for each axis.
-    // plot.SetLegend ("Buffer Size(packets)", "Fairness");
-    
-    //Set the x value ranges for each plots
-    // plot.AppendExtra ("set xrange [0:800]");
+
     plot.AppendExtra ("set yrange [0:+2.0]");
     plot_delay.AppendExtra ("set yrange [0.140:+0.143]");
     
     
-    // Add the dataset to the plot.
     plot.AddDataset (dataset);
     plot_delay.AddDataset(delay_dataset);
     
-    // Open the plot file for fairness
     std::ofstream plotFile (plotFileName.c_str());
     std::ofstream plotFile_delay (plotFileName_delay.c_str());
-    // Write the plot file.
     plot.GenerateOutput (plotFile);
     plot_delay.GenerateOutput (plotFile_delay);
-    // Close the plot file.
     plotFile.close ();
     plotFile_delay.close();
-    //Open the plot file for TCP throughput
     Simulator::Destroy ();
     NS_LOG_INFO ("Done :)");
     
