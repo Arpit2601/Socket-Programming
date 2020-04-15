@@ -19,17 +19,17 @@ NS_LOG_COMPONENT_DEFINE("try");
 int 
 main (int argc, char *argv[])
 {
-    Gnuplot2dDataset UTdataset, UDdataset, STdataset, SDdataset;
+    Gnuplot2dDataset UTdataset, UDdataset, VTdataset, VDdataset;
 	UTdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
 	UDdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-    SDdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
-    STdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+    VDdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
+    VTdataset.SetStyle (Gnuplot2dDataset::LINES_POINTS);
     
 
 
     CommandLine cmd;
     cmd.Parse (argc, argv);
-    std::string tcpModel ("ns3::TcpScalable");
+    std::string tcpModel ("ns3::TcpVegas");
     Config::SetDefault ("ns3::TcpL4Protocol::SocketType", StringValue (tcpModel));
 
     std::string rate_hr = "80Mbps";
@@ -129,15 +129,15 @@ main (int argc, char *argv[])
         ftp.SetAttribute ("SendSize", UintegerValue (packet_size));
         ftp.SetAttribute ("MaxBytes", UintegerValue (0));
         ApplicationContainer ftpApp = ftp.Install (all_nodes.Get (1));
-        ftpApp.Start (Seconds (1.0));
-        ftpApp.Stop (Seconds (simulation_time)); 
+        ftpApp.Start (Seconds (5.0));
+        ftpApp.Stop (Seconds (simulation_time+5)); 
         
 
         PacketSinkHelper sink3 ("ns3::TcpSocketFactory",
                                 Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
         ApplicationContainer sink_ftpApp = sink3.Install (all_nodes.Get (5));
-        sink_ftpApp.Start (Seconds (1.0));
-        sink_ftpApp.Stop (Seconds (simulation_time));
+        sink_ftpApp.Start (Seconds (5.0));
+        sink_ftpApp.Stop (Seconds (simulation_time+5));
         //------------------------------------------------
 
         //----------------------------------------------------------
@@ -153,7 +153,7 @@ main (int argc, char *argv[])
         int count=0;
         double Udelay=0, Hdelay=0;
         int Utotal_packets=0, Htotal_packets=0;
-        Simulator::Stop(Seconds(11.0));
+        Simulator::Stop(Seconds(16.0));
         Simulator::Run();
         
         flowmon->CheckForLostPackets(); 
@@ -186,22 +186,22 @@ main (int argc, char *argv[])
 
         UTdataset.Add(packet_size, Uthroughput);
         UDdataset.Add(packet_size, Udelay/Utotal_packets);
-        STdataset.Add(packet_size, Hthroughput);
-        SDdataset.Add(packet_size, Hdelay/Htotal_packets);
+        VTdataset.Add(packet_size, Hthroughput);
+        VDdataset.Add(packet_size, Hdelay/Htotal_packets);
 
         Simulator::Destroy(); 
         //-------------------------------------- 
         
     }
-    std :: string fileNameWithNoExtension = "USthroughput";
+    std :: string fileNameWithNoExtension = "UVthroughput";
     std :: string graphicsFileName        = fileNameWithNoExtension + ".png";
     std :: string plotFileName            = fileNameWithNoExtension + ".plt";
-    std :: string plotTitle               = "udp and scalable throughput vs packet size";
+    std :: string plotTitle               = "udp and vegas throughput vs packet size";
 
-    std :: string fileNameWithNoExtension_delay = "USdelay";
+    std :: string fileNameWithNoExtension_delay = "UVdelay";
     std :: string graphicsFileName_delay        = fileNameWithNoExtension_delay + ".png";
     std :: string plotFileName_delay            = fileNameWithNoExtension_delay + ".plt";
-    std :: string plotTitle_delay               = "udp and scalable delay vs packet size";
+    std :: string plotTitle_delay               = "udp and vegas delay vs packet size";
 
    
     Gnuplot plot (graphicsFileName);
@@ -220,9 +220,9 @@ main (int argc, char *argv[])
     
     
     plot.AddDataset (UTdataset);
-    plot.AddDataset(STdataset);
+    plot.AddDataset(VTdataset);
     plot_delay.AddDataset(UDdataset);
-    plot_delay.AddDataset(SDdataset);
+    plot_delay.AddDataset(VDdataset);
     
     std::ofstream plotFile (plotFileName.c_str());
     std::ofstream plotFile_delay (plotFileName_delay.c_str());
